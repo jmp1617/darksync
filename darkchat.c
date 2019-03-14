@@ -5,8 +5,8 @@ void print_usage(){
     fprintf(stderr,"Usage: darkchat [key] [node_ip] [nickname] [interface]\n \
             \tkey: AES key name\n \
             \tnode_ip: ip of active chat node\n \
-            \tnickname: chat nickname\n\n \
-            \tinterface: desired interface, IE: wlp4s0\n \
+            \tnickname: chat nickname\n \
+            \tinterface: desired interface, IE: wlp4s0\n\n \
             \tNote: place key file in $HOME/.darknet/keys dir\n");
 }
 
@@ -58,6 +58,14 @@ uint32_t get_ip_of_interface(char* interface){
     return (((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr).s_addr; 
 }
 
+void* message_reciever_worker(void* arg){
+
+}
+
+void* message_sender_worker(void* arg){
+
+}
+
 int main(int argc, char* argv[]){
     if( argc != 5 )
         print_usage();
@@ -76,8 +84,9 @@ int main(int argc, char* argv[]){
         Metadata meta = calloc(1,sizeof(struct metadata_s)); //TODO free
         meta->ip_count = 1;
         meta->my_ip = get_ip_of_interface(argv[4]);
-        // Create Master Socket
+        // Create Master Socket - used to accept conncetions and recieve messages
         int sockfd = init_socket();
+
     }
     return 0;
 }

@@ -12,8 +12,10 @@
 #include <ifaddrs.h>
 #include <sys/ioctl.h>
 #include <net/if.h>
+#include <pthread.h>
 
-#define LPORT 8686 
+#define LPORT 8686
+#define MAXCONN 50
 
 //------- Structures
 // User Input
@@ -44,3 +46,7 @@ void create_directories(); // create the .darkchat and keys if not present
 //------- socket
 int init_socket();
 uint32_t get_ip_of_iterface(char* interface);
+
+//------- threading
+void* message_reciever_worker(void* arg);
+void* message_sender_worker(void* arg);
