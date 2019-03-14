@@ -1,15 +1,65 @@
 #include "darkchat.h"
 
+// Voids
 void print_usage(){
-    fprintf(stderr,"Usage: darkchat [key] [node_ip] [nickname]\n \
+    fprintf(stderr,"Usage: darkchat [key] [node_ip] [nickname] [interface]\n \
             \tkey: AES key name\n \
             \tnode_ip: ip of active chat node\n \
             \tnickname: chat nickname\n\n \
+            \tinterface: desired interface, IE: wlp4s0\n \
             \tNote: place key file in $HOME/.darknet/keys dir\n");
 }
 
+void create_directories(){
+        struct stat st = {0};
+        char path[1024];
+        strcat(path,"/home/");
+        strcat(path,getlogin());
+        strcat(path,"/.darkchat");
+        if (stat(path, &st) == -1)
+            mkdir(path, 0700);
+        strcat(path,"/keys");
+        if (stat(path,&st) == -1)
+            mkdir(path, 0700);
+}
+
+// Socket
+int init_socket(){
+    struct sockaddr_in address;
+    int sockfd;
+    int opt = 1;
+    if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == 0){ 
+        fprintf(stderr,"socket failed"); 
+        exit(EXIT_FAILURE); 
+    }
+    // force port 8686
+    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))){ 
+        fprintf(stderr,"setsockopt"); 
+        exit(EXIT_FAILURE); 
+    }
+    address.sin_family = AF_INET; 
+    address.sin_addr.s_addr = INADDR_ANY; 
+    address.sin_port = htons( LPORT );
+    if (bind(sockfd, (struct sockaddr *)&address, sizeof(address))<0){
+        fprintf(stderr,"bind failed");
+        exit(EXIT_FAILURE);
+    }
+    return sockfd;
+}
+
+uint32_t get_ip_of_interface(char* interface){
+    int fd;
+ 	struct ifreq ifr;
+ 	fd = socket(AF_INET, SOCK_DGRAM, 0);
+ 	ifr.ifr_addr.sa_family = AF_INET;
+ 	strncpy(ifr.ifr_name, interface, IFNAMSIZ-1); 
+ 	ioctl(fd, SIOCGIFADDR, &ifr);
+ 	close(fd);
+    return (((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr).s_addr; 
+}
+
 int main(int argc, char* argv[]){
-    if( argc != 4 )
+    if( argc != 5 )
         print_usage();
     else{
         // Load arguments
@@ -20,7 +70,14 @@ int main(int argc, char* argv[]){
         strncpy(args->key, argv[1], strlen(argv[1])+1);
         strncpy(args->node_ip, argv[2], strlen(argv[2])+1);
         strncpy(args->nickname, argv[3], strlen(argv[3])+1);
-        printf("%s, %s, %s\n",args->key,args->node_ip,args->nickname);
+        // Create Dirs
+        create_directories();
+        // Initialize Metadata
+        Metadata meta = calloc(1,sizeof(struct metadata_s)); //TODO free
+        meta->ip_count = 1;
+        meta->my_ip = get_ip_of_interface(argv[4]);
+        // Create Master Socket
+        int sockfd = init_socket();
     }
     return 0;
 }
