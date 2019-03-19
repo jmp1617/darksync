@@ -30,6 +30,7 @@ typedef struct arguments_s* Arguments;
 struct metadata_s{
     int ip_count;
     uint32_t my_ip;
+    int master_sock;
 };
 typedef struct metadata_s* Metadata;
 

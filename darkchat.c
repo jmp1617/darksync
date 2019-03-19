@@ -84,8 +84,19 @@ int main(int argc, char* argv[]){
         Metadata meta = calloc(1,sizeof(struct metadata_s)); //TODO free
         meta->ip_count = 1;
         meta->my_ip = get_ip_of_interface(argv[4]);
+        if( !meta->my_ip ){
+            fprintf(stderr,"%s is not a valid inerface.\n",argv[4]);
+            exit(EXIT_FAILURE);
+        }
+        uint32_t ip_addr = meta->my_ip;
+        uint8_t octet[4];
+        for(int i = 0 ; i < 4 ; i++)
+            octet[i] = ip_addr >> (i * 8);
+        printf("Welcome, %s\nService binding to %d.%d.%d.%d:%d\n",args->nickname,octet[0],octet[1],octet[2],octet[3],LPORT);
         // Create Master Socket - used to accept conncetions and recieve messages
-        int sockfd = init_socket();
+        meta->master_sock = init_socket();
+        printf("Socket Initialized\n");
+        // Initialize Threads
 
     }
     return 0;
