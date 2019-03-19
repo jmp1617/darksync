@@ -68,22 +68,35 @@ void* message_sender_worker(void* arg){
     return 0;
 }
 
+void destructor(Arguments args, Metadata meta){
+    if(args){
+        free(args->key);
+        free(args->node_ip);
+        free(args->nickname);
+        free(args);
+    }
+    if(meta){
+        close(meta->master_sock);
+        free(meta);
+    }
+}
+
 int main(int argc, char* argv[]){
     if( argc != 5 )
         print_usage();
     else{
         // Load arguments
-        Arguments args = calloc(1, sizeof(struct arguments_s)); //TODO free
-        args->key = calloc(strlen(argv[1])+1, sizeof(char)); //TODO free
-        args->node_ip = calloc(strlen(argv[2])+1, sizeof(char)); //TODO free
-        args->nickname = calloc(strlen(argv[3])+1, sizeof(char)); //TODO free
+        Arguments args = calloc(1, sizeof(struct arguments_s));
+        args->key = calloc(strlen(argv[1])+1, sizeof(char));
+        args->node_ip = calloc(strlen(argv[2])+1, sizeof(char));
+        args->nickname = calloc(strlen(argv[3])+1, sizeof(char));
         strncpy(args->key, argv[1], strlen(argv[1])+1);
         strncpy(args->node_ip, argv[2], strlen(argv[2])+1);
         strncpy(args->nickname, argv[3], strlen(argv[3])+1);
         // Create Dirs
         create_directories();
         // Initialize Metadata
-        Metadata meta = calloc(1,sizeof(struct metadata_s)); //TODO free
+        Metadata meta = calloc(1,sizeof(struct metadata_s));
         meta->ip_count = 1;
         meta->my_ip = get_ip_of_interface(argv[4]);
         if( !meta->my_ip ){
@@ -101,9 +114,15 @@ int main(int argc, char* argv[]){
         
         // Initialize Threads
         pthread_t thread_id_reciever, thread_id_sender;
+        void* thread_ret;
         pthread_create(&thread_id_reciever, NULL, message_reciever_worker, &meta);
 	    pthread_create(&thread_id_sender, NULL, message_sender_worker, &meta);
+        pthread_join(thread_id_reciever, &thread_ret);
+        pthread_join(thread_id_sender, &thread_ret);
 	    pthread_exit(NULL);
+
+        // Free the malloc
+        destructor(args,meta);
     }
     return 0;
 }

@@ -31,6 +31,7 @@ struct metadata_s{
     int ip_count;
     uint32_t my_ip;
     int master_sock;
+    uint32_t* ip_list;
 };
 typedef struct metadata_s* Metadata;
 
@@ -51,3 +52,6 @@ uint32_t get_ip_of_iterface(char* interface);
 //------- threading
 void* message_reciever_worker(void* arg);
 void* message_sender_worker(void* arg);
+
+//------- destruction
+void destructor(Arguments args, Metadata meta);
