@@ -59,11 +59,13 @@ uint32_t get_ip_of_interface(char* interface){
 }
 
 void* message_reciever_worker(void* arg){
-
+    Metadata meta = (Metadata)arg;
+    return 0;
 }
 
 void* message_sender_worker(void* arg){
-
+    Metadata meta = (Metadata)arg;
+    return 0;
 }
 
 int main(int argc, char* argv[]){
@@ -96,8 +98,12 @@ int main(int argc, char* argv[]){
         // Create Master Socket - used to accept conncetions and recieve messages
         meta->master_sock = init_socket();
         printf("Socket Initialized\n");
+        
         // Initialize Threads
-
+        pthread_t thread_id_reciever, thread_id_sender;
+        pthread_create(&thread_id_reciever, NULL, message_reciever_worker, &meta);
+	    pthread_create(&thread_id_sender, NULL, message_sender_worker, &meta);
+	    pthread_exit(NULL);
     }
     return 0;
 }
