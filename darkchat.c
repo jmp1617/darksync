@@ -60,11 +60,13 @@ uint32_t get_ip_of_interface(char* interface){
 
 void* message_reciever_worker(void* arg){
     Metadata meta = (Metadata)arg;
+    printf("Reciever: Initialized\n");
     return 0;
 }
 
 void* message_sender_worker(void* arg){
     Metadata meta = (Metadata)arg;
+    printf("Sender: Initialized\n");
     return 0;
 }
 
@@ -87,9 +89,9 @@ int main(int argc, char* argv[]){
     else{
         // Load arguments
         Arguments args = calloc(1, sizeof(struct arguments_s));
-        args->key = calloc(strlen(argv[1])+1, sizeof(char));
-        args->node_ip = calloc(strlen(argv[2])+1, sizeof(char));
-        args->nickname = calloc(strlen(argv[3])+1, sizeof(char));
+        args->key = calloc(1,strlen(argv[1])+1);
+        args->node_ip = calloc(1,strlen(argv[2])+1);
+        args->nickname = calloc(1,strlen(argv[3])+1);
         strncpy(args->key, argv[1], strlen(argv[1])+1);
         strncpy(args->node_ip, argv[2], strlen(argv[2])+1);
         strncpy(args->nickname, argv[3], strlen(argv[3])+1);
@@ -119,8 +121,6 @@ int main(int argc, char* argv[]){
 	    pthread_create(&thread_id_sender, NULL, message_sender_worker, &meta);
         pthread_join(thread_id_reciever, &thread_ret);
         pthread_join(thread_id_sender, &thread_ret);
-	    pthread_exit(NULL);
-
         // Free the malloc
         destructor(args,meta);
     }
