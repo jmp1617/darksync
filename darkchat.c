@@ -60,13 +60,16 @@ uint32_t get_ip_of_interface(char* interface){
 
 void* message_reciever_worker(void* arg){
     Metadata meta = (Metadata)arg;
-    printf("Reciever: Initialized\n");
+    printf("Reciever: %d current active IP addresses\n",meta->ip_count);
+    while(1){ // wait for connections
+        return 0;
+    }
     return 0;
 }
 
 void* message_sender_worker(void* arg){
     Metadata meta = (Metadata)arg;
-    printf("Sender: Initialized\n");
+    printf("Sender: %d current active IP addresses\n",meta->ip_count);
     return 0;
 }
 
@@ -117,8 +120,8 @@ int main(int argc, char* argv[]){
         // Initialize Threads
         pthread_t thread_id_reciever, thread_id_sender;
         void* thread_ret;
-        pthread_create(&thread_id_reciever, NULL, message_reciever_worker, &meta);
-	    pthread_create(&thread_id_sender, NULL, message_sender_worker, &meta);
+        pthread_create(&thread_id_reciever, NULL, message_reciever_worker, meta);
+	    pthread_create(&thread_id_sender, NULL, message_sender_worker, meta);
         pthread_join(thread_id_reciever, &thread_ret);
         pthread_join(thread_id_sender, &thread_ret);
         // Free the malloc

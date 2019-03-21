@@ -32,6 +32,7 @@ struct metadata_s{
     uint32_t my_ip;
     int master_sock;
     uint32_t* ip_list;
+    unsigned int lock: 1;
 };
 typedef struct metadata_s* Metadata;
 
