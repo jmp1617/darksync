@@ -29,10 +29,24 @@ void check_args(char* argv[]){
         fprintf(stderr,"Key filename to long, rename it.\n");
         exit(EXIT_FAILURE);
     }
+    for(size_t byte=0; byte<strlen(argv[1]); byte++){
+        uint8_t b = argv[1][byte];
+        if( b > 122 || b < 33 ){
+            fprintf(stderr,"Key file name should only contain ASCII 33 - 122.\n");
+            exit(EXIT_FAILURE);
+        }
+    }
     // check nickname
     if(strlen(argv[3])>20){
         fprintf(stderr,"Try using a shorter nickname.\n");
         exit(EXIT_FAILURE);
+    }
+    for(size_t byte=0; byte<strlen(argv[3]); byte++){
+        uint8_t b = argv[3][byte];
+        if( b > 122 || b < 33 ){
+            fprintf(stderr,"Nickname should only contain ASCII 33 - 122.\n");
+            exit(EXIT_FAILURE);
+        }
     }
 }
 
