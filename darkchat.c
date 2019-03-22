@@ -36,6 +36,18 @@ void check_args(char* argv[]){
             exit(EXIT_FAILURE);
         }
     }
+    // check ip 
+    if(strlen(argv[2])>15){
+        fprintf(stderr,"Invalid IP.\n");
+        exit(EXIT_FAILURE);
+    }
+    for(size_t byte=0; byte<strlen(argv[2]); byte++){
+        uint8_t b = argv[2][byte];
+        if( (b < 48 || b > 57) && b != 46 ){
+            fprintf(stderr,"Invalid IP.\n");
+            exit(EXIT_FAILURE);
+        }
+    }
     // check nickname
     if(strlen(argv[3])>20){
         fprintf(stderr,"Try using a shorter nickname.\n");
