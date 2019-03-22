@@ -45,6 +45,7 @@ typedef struct ip_node_s* IPs;
 //------- voids
 void print_usage(); // print the usage
 void create_directories(); // create the .darkchat and keys if not present
+void check_args(); // validate arguments
 
 //------- socket
 int init_socket();

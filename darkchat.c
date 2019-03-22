@@ -12,7 +12,7 @@ void print_usage(){
 
 void create_directories(){
         struct stat st = {0};
-        char path[1024];
+        char path[1024] = {0};
         strcat(path,"/home/");
         strcat(path,getlogin());
         strcat(path,"/.darkchat");
@@ -21,6 +21,19 @@ void create_directories(){
         strcat(path,"/keys");
         if (stat(path,&st) == -1)
             mkdir(path, 0700);
+}
+
+void check_args(char* argv[]){
+    // check key file
+    if(strlen(argv[1])>50){
+        fprintf(stderr,"Key filename to long, rename it.\n");
+        exit(EXIT_FAILURE);
+    }
+    // check nickname
+    if(strlen(argv[3])>20){
+        fprintf(stderr,"Try using a shorter nickname.\n");
+        exit(EXIT_FAILURE);
+    }
 }
 
 // Socket
@@ -90,6 +103,8 @@ int main(int argc, char* argv[]){
     if( argc != 5 )
         print_usage();
     else{
+        // Check arguments
+        check_args(argv);
         // Load arguments
         Arguments args = calloc(1, sizeof(struct arguments_s));
         args->key = calloc(1,strlen(argv[1])+1);
