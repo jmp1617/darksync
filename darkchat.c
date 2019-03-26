@@ -1,14 +1,14 @@
 #include "darkchat.h"
 
 // Ip linked list
-void IPL_add(uint32_t ip, IP_List root){
-    if(!root){
-        root = calloc(1,sizeof(struct ip_list_s));
-        root->ip = ip;
-        root->next = NULL;
+void IPL_add(uint32_t ip, IP_List* root){
+    if(!(*root)){
+        (*root) = calloc(1,sizeof(struct ip_list_s));
+        (*root)->ip = ip;
+        (*root)->next = NULL;
     }
     else{
-        IP_List temp = root;
+        IP_List temp = *root;
         while(temp->next){
             temp = temp->next;
         }
@@ -19,19 +19,24 @@ void IPL_add(uint32_t ip, IP_List root){
 }
 
 void IPL_print(IP_List root){
-    if(root)
+    if(root){
         print_ip(root->ip);
-    IPL_print(root->next);
+        printf("\n");
+    }
+    if(root->next)
+        IPL_print(root->next);
 }
 
 void IPL_destroy(IP_List root){
     if(root->next)
         IPL_destroy(root->next);
-    free(root);
+    if(root)
+        free(root);
 }
 
 // Aux
 uint32_t conv_ip(char* ip){
+    uint32_t result=0x00000000;
     char oct[16]={0};
     int o;
     int p = 0;
@@ -55,8 +60,7 @@ uint32_t conv_ip(char* ip){
             oct[15] = '\0';
         }
     }
-    uint8_t bytes[4]={0};
-    for(int byte=0;byte<4;byte++){
+    for(int byte=3;byte>=0;byte--){
         char b[4]={0};
         strncpy(b,oct+(byte*4),4);
         int x = strtol(b,NULL,10);
@@ -64,9 +68,11 @@ uint32_t conv_ip(char* ip){
             fprintf(stderr,"IP: %s is not a valid IP.\n",ip);
             exit(EXIT_FAILURE);
         }
-        bytes[byte]=x;
+        result |= (uint8_t)x;
+        if(byte>0)
+            result <<= 8;
     }
-    return 0;
+    return result;
 }
 
 // Voids
@@ -221,7 +227,7 @@ int main(int argc, char* argv[]){
         Metadata meta = calloc(1,sizeof(struct metadata_s));
         meta->ip_count = 1;
         meta->my_ip = get_ip_of_interface(argv[4]);
-        uint32_t ip = conv_ip(args->node_ip);
+        IPL_add(conv_ip(args->node_ip),&(meta->ip_list));
         if( !meta->my_ip ){
             fprintf(stderr,"%s is not a valid interface.\n",argv[4]);
             exit(EXIT_FAILURE);
@@ -231,8 +237,10 @@ int main(int argc, char* argv[]){
         printf(":%d\n",LPORT);
         // Create Master Socket - used to accept conncetions and recieve messages
         meta->master_sock = init_socket();
-        printf("Socket Initialized\n");
-        
+        printf("\nActive IP list:\n");
+        IPL_print(meta->ip_list);
+        printf("\n");
+        printf("Socket Initialized\n"); 
         // Initialize Threads
         pthread_t thread_id_reciever, thread_id_sender;
         void* thread_ret;

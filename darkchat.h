@@ -33,7 +33,7 @@ struct ip_list_s{
 };
 typedef struct ip_list_s* IP_List;
 
-void IPL_add(uint32_t ip, IP_List root);
+void IPL_add(uint32_t ip, IP_List* root);
 void IPL_print(IP_List root);
 void IPL_destroy(IP_List root);
 
@@ -52,6 +52,9 @@ void print_usage(); // print the usage
 void create_directories(); // create the .darkchat and keys if not present
 void check_args(); // validate arguments
 void print_ip(uint32_t ip); // print in human readable
+
+//------- aux
+uint32_t conv_ip(char* ip); // check and convert the ip
 
 //------- socket
 int init_socket();
