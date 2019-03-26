@@ -44,6 +44,7 @@ struct metadata_s{
     int master_sock;
     IP_List ip_list;
     unsigned int lock: 1;
+    unsigned int ipassive: 1;
 };
 typedef struct metadata_s* Metadata;
 

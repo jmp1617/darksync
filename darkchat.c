@@ -22,16 +22,17 @@ void IPL_print(IP_List root){
     if(root){
         print_ip(root->ip);
         printf("\n");
+        if(root->next)
+            IPL_print(root->next);
     }
-    if(root->next)
-        IPL_print(root->next);
 }
 
 void IPL_destroy(IP_List root){
-    if(root->next)
-        IPL_destroy(root->next);
-    if(root)
+    if(root){
+        if(root->next)
+            IPL_destroy(root->next);
         free(root);
+    }
 }
 
 // Aux
@@ -40,6 +41,7 @@ uint32_t conv_ip(char* ip){
     char oct[16]={0};
     int o;
     int p = 0;
+    //rip apart inputed data and validate
     for(int octet = 0; octet<4; octet++){
         o = octet*4;
         if(octet<3){ // first 3 octets
@@ -60,7 +62,8 @@ uint32_t conv_ip(char* ip){
             oct[15] = '\0';
         }
     }
-    for(int byte=3;byte>=0;byte--){
+    // convert to uint32_t while checking fields
+    for(int byte=3;byte>=0;byte--){ 
         char b[4]={0};
         strncpy(b,oct+(byte*4),4);
         int x = strtol(b,NULL,10);
@@ -79,7 +82,7 @@ uint32_t conv_ip(char* ip){
 void print_usage(){
     fprintf(stderr,"Usage: darkchat [key] [node_ip] [nickname] [interface]\n \
             \tkey: AES key name\n \
-            \tnode_ip: ip of active chat node\n \
+            \tnode_ip: ip of active chat node (enter \"p\" to start in passive mode)\n \
             \tnickname: chat nickname\n \
             \tinterface: desired interface, IE: wlp4s0\n\n \
             \tNote: place key file in $HOME/.darknet/keys dir\n");
@@ -112,15 +115,17 @@ void check_args(char* argv[]){
         }
     }
     // check ip 
-    if(strlen(argv[2])>15){
-        fprintf(stderr,"Invalid IP.\n");
-        exit(EXIT_FAILURE);
-    }
-    for(size_t byte=0; byte<strlen(argv[2]); byte++){
-        uint8_t b = argv[2][byte];
-        if( (b < 48 || b > 57) && b != 46 ){
+    if(!(argv[2][0]=='p'&&strlen(argv[2])==1)){
+        if(strlen(argv[2])>15){
             fprintf(stderr,"Invalid IP.\n");
             exit(EXIT_FAILURE);
+        }
+        for(size_t byte=0; byte<strlen(argv[2]); byte++){
+            uint8_t b = argv[2][byte];
+            if( (b < 48 || b > 57) && b != 46 ){
+                fprintf(stderr,"Invalid IP.\n");
+                exit(EXIT_FAILURE);
+            }
         }
     }
     // check nickname
@@ -202,6 +207,7 @@ void destructor(Arguments args, Metadata meta){
         free(args);
     }
     if(meta){
+        IPL_destroy(meta->ip_list);
         close(meta->master_sock);
         free(meta);
     }
@@ -213,34 +219,50 @@ int main(int argc, char* argv[]){
     else{
         // Check arguments
         check_args(argv);
+        
         // Load arguments
         Arguments args = calloc(1, sizeof(struct arguments_s));
         args->key = calloc(1,strlen(argv[1])+1);
         args->node_ip = calloc(1,strlen(argv[2])+1);
         args->nickname = calloc(1,strlen(argv[3])+1);
         strncpy(args->key, argv[1], strlen(argv[1])+1);
-        strncpy(args->node_ip, argv[2], strlen(argv[2])+1);
         strncpy(args->nickname, argv[3], strlen(argv[3])+1);
+        
         // Create Dirs
         create_directories();
+        
         // Initialize Metadata
         Metadata meta = calloc(1,sizeof(struct metadata_s));
-        meta->ip_count = 1;
+        if(argv[2][0]=='p'){
+            meta->ipassive = 1;
+            strncpy(args->node_ip, "passive", 8);
+        }
+        else{
+            strncpy(args->node_ip, argv[2], strlen(argv[2])+1);
+            meta->ipassive = 0;
+        }
+        if(!meta->ipassive)
+            meta->ip_count = 1;
+        else
+            meta->ip_count = 0;
         meta->my_ip = get_ip_of_interface(argv[4]);
-        IPL_add(conv_ip(args->node_ip),&(meta->ip_list));
         if( !meta->my_ip ){
             fprintf(stderr,"%s is not a valid interface.\n",argv[4]);
             exit(EXIT_FAILURE);
         }
+        if(!meta->ipassive)
+            IPL_add(conv_ip(args->node_ip),&(meta->ip_list));
         printf("Welcome, %s\nService binding to ",args->nickname);
         print_ip(meta->my_ip);
         printf(":%d\n",LPORT);
-        // Create Master Socket - used to accept conncetions and recieve messages
-        meta->master_sock = init_socket();
+        // Print the initial data
         printf("\nActive IP list:\n");
         IPL_print(meta->ip_list);
         printf("\n");
+        
+        meta->master_sock = init_socket();
         printf("Socket Initialized\n"); 
+        
         // Initialize Threads
         pthread_t thread_id_reciever, thread_id_sender;
         void* thread_ret;
@@ -248,6 +270,7 @@ int main(int argc, char* argv[]){
 	    pthread_create(&thread_id_sender, NULL, message_sender_worker, meta);
         pthread_join(thread_id_reciever, &thread_ret);
         pthread_join(thread_id_sender, &thread_ret);
+        
         // Free the malloc
         destructor(args,meta);
     }
