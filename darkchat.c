@@ -1,5 +1,74 @@
 #include "darkchat.h"
 
+// Ip linked list
+void IPL_add(uint32_t ip, IP_List root){
+    if(!root){
+        root = calloc(1,sizeof(struct ip_list_s));
+        root->ip = ip;
+        root->next = NULL;
+    }
+    else{
+        IP_List temp = root;
+        while(temp->next){
+            temp = temp->next;
+        }
+        temp->next = calloc(1,sizeof(struct ip_list_s));
+        temp->next->ip = ip;
+        temp->next->next = NULL;
+    }
+}
+
+void IPL_print(IP_List root){
+    if(root)
+        print_ip(root->ip);
+    IPL_print(root->next);
+}
+
+void IPL_destroy(IP_List root){
+    if(root->next)
+        IPL_destroy(root->next);
+    free(root);
+}
+
+// Aux
+uint32_t conv_ip(char* ip){
+    char oct[16]={0};
+    int o;
+    int p = 0;
+    for(int octet = 0; octet<4; octet++){
+        o = octet*4;
+        if(octet<3){ // first 3 octets
+            while(ip[p]!='.'){
+                if(p==o+4){
+                    fprintf(stderr, "IP: %s is not a valid IP.\n",ip);
+                    exit(EXIT_FAILURE);
+                }
+                oct[o]=ip[p];
+                p++;
+                o++;
+            }
+            p++;
+            oct[o] ='\0';
+        }
+        else{ // last octet
+            strncpy(oct+12,ip+p,4);
+            oct[15] = '\0';
+        }
+    }
+    uint8_t bytes[4]={0};
+    for(int byte=0;byte<4;byte++){
+        char b[4]={0};
+        strncpy(b,oct+(byte*4),4);
+        int x = strtol(b,NULL,10);
+        if(x>255){
+            fprintf(stderr,"IP: %s is not a valid IP.\n",ip);
+            exit(EXIT_FAILURE);
+        }
+        bytes[byte]=x;
+    }
+    return 0;
+}
+
 // Voids
 void print_usage(){
     fprintf(stderr,"Usage: darkchat [key] [node_ip] [nickname] [interface]\n \
@@ -62,6 +131,13 @@ void check_args(char* argv[]){
     }
 }
 
+void print_ip(uint32_t ip){
+    uint8_t octet[4];
+    for(int i = 0 ; i < 4 ; i++)
+        octet[i] = ip >> (i * 8);
+    printf("%d.%d.%d.%d",octet[0],octet[1],octet[2],octet[3]);
+}
+
 // Socket
 int init_socket(){
     struct sockaddr_in address;
@@ -101,7 +177,7 @@ void* message_reciever_worker(void* arg){
     Metadata meta = (Metadata)arg;
     printf("Reciever: %d current active IP addresses\n",meta->ip_count);
     while(1){ // wait for connections
-        return 0;
+       break; 
     }
     return 0;
 }
@@ -145,15 +221,14 @@ int main(int argc, char* argv[]){
         Metadata meta = calloc(1,sizeof(struct metadata_s));
         meta->ip_count = 1;
         meta->my_ip = get_ip_of_interface(argv[4]);
+        uint32_t ip = conv_ip(args->node_ip);
         if( !meta->my_ip ){
-            fprintf(stderr,"%s is not a valid inerface.\n",argv[4]);
+            fprintf(stderr,"%s is not a valid interface.\n",argv[4]);
             exit(EXIT_FAILURE);
         }
-        uint32_t ip_addr = meta->my_ip;
-        uint8_t octet[4];
-        for(int i = 0 ; i < 4 ; i++)
-            octet[i] = ip_addr >> (i * 8);
-        printf("Welcome, %s\nService binding to %d.%d.%d.%d:%d\n",args->nickname,octet[0],octet[1],octet[2],octet[3],LPORT);
+        printf("Welcome, %s\nService binding to ",args->nickname);
+        print_ip(meta->my_ip);
+        printf(":%d\n",LPORT);
         // Create Master Socket - used to accept conncetions and recieve messages
         meta->master_sock = init_socket();
         printf("Socket Initialized\n");

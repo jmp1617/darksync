@@ -26,26 +26,32 @@ struct arguments_s{
 };
 typedef struct arguments_s* Arguments;
 
+// Ip linked list
+struct ip_list_s{
+    uint32_t ip;
+    struct ip_list_s* next;
+};
+typedef struct ip_list_s* IP_List;
+
+void IPL_add(uint32_t ip, IP_List root);
+void IPL_print(IP_List root);
+void IPL_destroy(IP_List root);
+
 // Metadata 
 struct metadata_s{
     int ip_count;
     uint32_t my_ip;
     int master_sock;
-    uint32_t* ip_list;
+    IP_List ip_list;
     unsigned int lock: 1;
 };
 typedef struct metadata_s* Metadata;
-
-// IP list
-struct ip_node_s{
-    uint32_t* address_list;
-};
-typedef struct ip_node_s* IPs;
 
 //------- voids
 void print_usage(); // print the usage
 void create_directories(); // create the .darkchat and keys if not present
 void check_args(); // validate arguments
+void print_ip(uint32_t ip); // print in human readable
 
 //------- socket
 int init_socket();
