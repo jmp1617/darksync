@@ -250,8 +250,7 @@ int main(int argc, char* argv[]){
             fprintf(stderr,"%s is not a valid interface.\n",argv[4]);
             exit(EXIT_FAILURE);
         }
-        if(!meta->ipassive)
-            IPL_add(conv_ip(args->node_ip),&(meta->ip_list));
+        IPL_add(meta->my_ip,&(meta->ip_list)); //initial list only contains yourself
         printf("Welcome, %s\nService binding to ",args->nickname);
         print_ip(meta->my_ip);
         printf(":%d\n",LPORT);
@@ -263,13 +262,25 @@ int main(int argc, char* argv[]){
         meta->master_sock = init_socket();
         printf("Socket Initialized\n"); 
         
+        // ask for the itial nodes ip list 
+        if(meta->ipassive){ // if you are the first node on the network
+            printf("Passive: waiting for clients...\n");
+            if (listen(meta->master_sock, MAXCONN) < 0){ 
+                fprintf(stderr, "failed on listen\n"); 
+                exit(EXIT_FAILURE); 
+            } 
+        }
+        else{
+            printf("Asking %s for active ip list...\n",args->node_ip);
+        }
+
         // Initialize Threads
-        pthread_t thread_id_reciever, thread_id_sender;
-        void* thread_ret;
-        pthread_create(&thread_id_reciever, NULL, message_reciever_worker, meta);
-	    pthread_create(&thread_id_sender, NULL, message_sender_worker, meta);
-        pthread_join(thread_id_reciever, &thread_ret);
-        pthread_join(thread_id_sender, &thread_ret);
+        //pthread_t thread_id_reciever, thread_id_sender;
+        //void* thread_ret;
+        //pthread_create(&thread_id_reciever, NULL, message_reciever_worker, meta);
+	    //pthread_create(&thread_id_sender, NULL, message_sender_worker, meta);
+        //pthread_join(thread_id_reciever, &thread_ret);
+        //pthread_join(thread_id_sender, &thread_ret);
         
         // Free the malloc
         destructor(args,meta);
