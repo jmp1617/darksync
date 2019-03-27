@@ -211,6 +211,9 @@ void* message_reciever_worker(void* arg){
         fprintf(stderr, "failed on accept");
         exit(EXIT_FAILURE);
     }
+    printf("Reciever: ");
+    print_ip(address.sin_addr.s_addr);
+    printf(" connected.\n");
     uint8_t message[1024] = {0};
     read(new_socket , message, 1024); 
     if(message[0]==ACTIVE_NODES_REQ){ // node list request
@@ -335,7 +338,8 @@ int main(int argc, char* argv[]){
             free(request);
             uint8_t* buffer[MAXCONN*4]={0};
             read(meta->master_sock, buffer, MAXCONN*4);
-            printf("List recieved from %s.",args->node_ip);
+            printf("List recieved from %s.\n",args->node_ip);
+            //add to ip list 
         }
 
         // Initialize Threads
