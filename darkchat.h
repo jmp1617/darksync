@@ -17,6 +17,12 @@
 #define LPORT 8686
 #define MAXCONN 50
 
+//------- Identifiers
+#define ACTIVE_NODES_REQ 0xF0
+#define DISCONNECT 0xF1
+#define STD_MSG 0xF2
+#define NODE_RES 0xF3
+
 //------- Structures
 // User Input
 struct arguments_s{
@@ -48,6 +54,13 @@ struct metadata_s{
 };
 typedef struct metadata_s* Metadata;
 
+struct message_s{
+    uint8_t identifier;
+    uint8_t size;
+    uint8_t* message;
+};
+typedef struct message_s* Message;
+
 //------- voids
 void print_usage(); // print the usage
 void create_directories(); // create the .darkchat and keys if not present
@@ -59,7 +72,8 @@ uint32_t conv_ip(char* ip); // check and convert the ip
 
 //------- socket
 int init_socket();
-uint32_t get_ip_of_iterface(char* interface);
+uint32_t get_ip_of_interface(char* interface);
+int send_message(Message m, int socket);
 
 //------- threading
 void* message_reciever_worker(void* arg);

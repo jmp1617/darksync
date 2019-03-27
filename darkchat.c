@@ -184,11 +184,63 @@ uint32_t get_ip_of_interface(char* interface){
     return (((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr).s_addr; 
 }
 
+int send_message(Message m, int socket){
+    uint8_t* buffer = calloc(m->size, 1);
+    buffer[0] = m->identifier;
+    if(m->size > 1)
+        for(int byte = 1; byte <= m->size; byte++){
+            buffer[byte] = (m->message)[byte-1];
+        }
+    send(socket , buffer , m->size, 0 ); 
+    return 0;
+}
+
+// Threading
 void* message_reciever_worker(void* arg){
     Metadata meta = (Metadata)arg;
     printf("Reciever: %d current active IP addresses\n",meta->ip_count);
-    while(1){ // wait for connections
-       break; 
+    printf("Reciever: waiting for messages...\n");
+    if (listen(meta->master_sock, MAXCONN) < 0){ 
+        fprintf(stderr, "failed on listen\n"); 
+        exit(EXIT_FAILURE); 
+    }
+    struct sockaddr_in address;
+    int addrlen = sizeof(address);
+    int new_socket;
+    if ((new_socket = accept(meta->master_sock, (struct sockaddr *)&address,(socklen_t*)&addrlen))<0){
+        fprintf(stderr, "failed on accept");
+        exit(EXIT_FAILURE);
+    }
+    uint8_t message[1024] = {0};
+    read(new_socket , message, 1024); 
+    if(message[0]==ACTIVE_NODES_REQ){ // node list request
+        meta->lock = 1;
+        IPL_add(address.sin_addr.s_addr,&(meta->ip_list));
+        meta->ip_count++;
+        Message ip_list_message = calloc(1,sizeof(struct message_s));
+        ip_list_message->identifier = NODE_RES;
+        ip_list_message->size = (meta->ip_count*4)+1;
+        ip_list_message->message = calloc((meta->ip_count*4)+2,1);
+        ip_list_message->message[0] = meta->ip_count;
+        int offset = 1;
+        IP_List temp = meta->ip_list;
+        for(int ip = 0; ip < meta->ip_count; ip++){
+            memcpy(ip_list_message+offset,&(temp->ip),4);
+            offset+=4;
+            temp = temp->next;
+        }
+        meta->lock = 0;
+        send_message(ip_list_message, new_socket);
+        close(new_socket);
+    }
+    else if(message[0]==DISCONNECT){ // disconnect 
+
+    }
+    else if(message[0]==STD_MSG){ // normal message 
+
+    }
+    else{ // otherwise drop
+        close(new_socket);    
     }
     return 0;
 }
@@ -199,6 +251,7 @@ void* message_sender_worker(void* arg){
     return 0;
 }
 
+// Destruction 
 void destructor(Arguments args, Metadata meta){
     if(args){
         free(args->key);
@@ -263,24 +316,35 @@ int main(int argc, char* argv[]){
         printf("Socket Initialized\n"); 
         
         // ask for the itial nodes ip list 
-        if(meta->ipassive){ // if you are the first node on the network
-            printf("Passive: waiting for clients...\n");
-            if (listen(meta->master_sock, MAXCONN) < 0){ 
-                fprintf(stderr, "failed on listen\n"); 
-                exit(EXIT_FAILURE); 
-            } 
-        }
-        else{
+        if(!meta->ipassive){
             printf("Asking %s for active ip list...\n",args->node_ip);
+            // create the message;
+            Message request = calloc(1,sizeof(struct message_s));
+            request->identifier = ACTIVE_NODES_REQ;
+            request->size = 1;
+            // connect to node
+            struct sockaddr_in node;
+            node.sin_family = AF_INET;
+            node.sin_port = htons(LPORT);
+            if(inet_pton(AF_INET, args->node_ip, &node.sin_addr)<=0){
+                printf("\nInvalid address/ Address not supported \n");
+                exit(EXIT_FAILURE);
+            }
+            while(connect(meta->master_sock, (struct sockaddr *)&node, sizeof(node)) < 0);
+            send_message(request, meta->master_sock); 
+            free(request);
+            uint8_t* buffer[MAXCONN*4]={0};
+            read(meta->master_sock, buffer, MAXCONN*4);
+            printf("List recieved from %s.",args->node_ip);
         }
 
         // Initialize Threads
-        //pthread_t thread_id_reciever, thread_id_sender;
-        //void* thread_ret;
-        //pthread_create(&thread_id_reciever, NULL, message_reciever_worker, meta);
-	    //pthread_create(&thread_id_sender, NULL, message_sender_worker, meta);
-        //pthread_join(thread_id_reciever, &thread_ret);
-        //pthread_join(thread_id_sender, &thread_ret);
+        pthread_t thread_id_reciever, thread_id_sender;
+        void* thread_ret;
+        pthread_create(&thread_id_reciever, NULL, message_reciever_worker, meta);
+	    pthread_create(&thread_id_sender, NULL, message_sender_worker, meta);
+        pthread_join(thread_id_reciever, &thread_ret);
+        pthread_join(thread_id_sender, &thread_ret);
         
         // Free the malloc
         destructor(args,meta);
