@@ -222,13 +222,17 @@ void* message_reciever_worker(void* arg){
         meta->ip_count++;
         Message ip_list_message = calloc(1,sizeof(struct message_s));
         ip_list_message->identifier = NODE_RES;
-        ip_list_message->size = (meta->ip_count*4)+1;
+        ip_list_message->size = (meta->ip_count*4)+2;
         ip_list_message->message = calloc((meta->ip_count*4)+2,1);
         ip_list_message->message[0] = meta->ip_count;
         int offset = 1;
         IP_List temp = meta->ip_list;
         for(int ip = 0; ip < meta->ip_count; ip++){
-            memcpy(ip_list_message+offset,&(temp->ip),4);
+            uint32_t ipad = temp->ip;
+            for(int b = 3; b >= 0; b--){
+                ip_list_message->message[offset+b] |= ipad&0xFF;
+                ipad >>= 8;
+            }
             offset+=4;
             temp = temp->next;
         }
@@ -310,10 +314,6 @@ int main(int argc, char* argv[]){
         printf("Welcome, %s\nService binding to ",args->nickname);
         print_ip(meta->my_ip);
         printf(":%d\n",LPORT);
-        // Print the initial data
-        printf("\nActive IP list:\n");
-        IPL_print(meta->ip_list);
-        printf("\n");
         
         meta->master_sock = init_socket();
         printf("Socket Initialized\n"); 
@@ -336,11 +336,28 @@ int main(int argc, char* argv[]){
             while(connect(meta->master_sock, (struct sockaddr *)&node, sizeof(node)) < 0);
             send_message(request, meta->master_sock); 
             free(request);
-            uint8_t* buffer[MAXCONN*4]={0};
+            uint8_t buffer[(MAXCONN*4)+2]={0};
             read(meta->master_sock, buffer, MAXCONN*4);
             printf("List recieved from %s.\n",args->node_ip);
-            //add to ip list 
+            uint8_t size = buffer[1];
+            //add to ip list
+            for(int ipad = 2; ipad < size+2; ipad++){
+                uint32_t address = 0;
+                for(int b = 0; b < 4; b++){
+                    address |= buffer[ipad+b];
+                    if(b!=3)
+                        address <<= 8;
+                }
+                IPL_add(address,&(meta->ip_list));
+            }
+            //reinit socket
+            close(meta->master_sock);
+            meta->master_sock = init_socket();
         }
+        // Print the initial data
+        printf("\nActive IP list:\n");
+        IPL_print(meta->ip_list);
+        printf("\n");
 
         // Initialize Threads
         pthread_t thread_id_reciever, thread_id_sender;
