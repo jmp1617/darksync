@@ -37,7 +37,7 @@ void IPL_destroy(IP_List root){
 
 // Aux
 uint32_t conv_ip(char* ip){
-    uint32_t result=0x00000000;
+    uint32_t result=0;
     char oct[16]={0};
     int o;
     int p = 0;
@@ -217,7 +217,8 @@ void* message_reciever_worker(void* arg){
     uint8_t message[1024] = {0};
     read(new_socket , message, 1024); 
     if(message[0]==ACTIVE_NODES_REQ){ // node list request
-        meta->lock = 1;
+        while(meta->lock); // wait for the list to be free
+        meta->lock = 1; // lock the ip shared data
         IPL_add(address.sin_addr.s_addr,&(meta->ip_list));
         meta->ip_count++;
         Message ip_list_message = calloc(1,sizeof(struct message_s));
@@ -227,14 +228,14 @@ void* message_reciever_worker(void* arg){
         ip_list_message->message[0] = meta->ip_count;
         int offset = 1;
         IP_List temp = meta->ip_list;
-        for(int ip = 0; ip < meta->ip_count; ip++){
-            uint32_t ipad = temp->ip;
-            for(int b = 3; b >= 0; b--){
-                ip_list_message->message[offset+b] |= ipad&0xFF;
-                ipad >>= 8;
+        for(int ip = 0; ip < meta->ip_count; ip++){// for each ip
+            uint32_t ipad = temp->ip; // copy the ip 
+            for(int b = 3; b >= 0; b--){ // bytes in decending order
+                ip_list_message->message[offset+b] |= ipad&0xFF; // set the byte
+                ipad >>= 8; // shift to next
             }
-            offset+=4;
-            temp = temp->next;
+            offset+=4; // jump forward 4 bytes in the message
+            temp = temp->next; // get the next ip
         }
         meta->lock = 0;
         send_message(ip_list_message, new_socket);
@@ -341,14 +342,14 @@ int main(int argc, char* argv[]){
             printf("List recieved from %s.\n",args->node_ip);
             uint8_t size = buffer[1];
             //add to ip list
-            for(int ipad = 2; ipad < size+2; ipad++){
+            for(int ipad = 2; ipad < size+2; ipad+=4){ // for each ip address
                 uint32_t address = 0;
-                for(int b = 0; b < 4; b++){
-                    address |= buffer[ipad+b];
-                    if(b!=3)
+                for(int b = 0; b < 4; b++){ // each byte in address
+                    address |= buffer[ipad+b]; // get the byte
+                    if(b!=3) // shift if not the end byte
                         address <<= 8;
                 }
-                IPL_add(address,&(meta->ip_list));
+                IPL_add(address,&(meta->ip_list)); // add the ip to the master list
             }
             //reinit socket
             close(meta->master_sock);
@@ -363,7 +364,7 @@ int main(int argc, char* argv[]){
         pthread_t thread_id_reciever, thread_id_sender;
         void* thread_ret;
         pthread_create(&thread_id_reciever, NULL, message_reciever_worker, meta);
-	    pthread_create(&thread_id_sender, NULL, message_sender_worker, meta);
+        pthread_create(&thread_id_sender, NULL, message_sender_worker, meta);
         pthread_join(thread_id_reciever, &thread_ret);
         pthread_join(thread_id_sender, &thread_ret);
         
