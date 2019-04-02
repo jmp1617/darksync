@@ -229,7 +229,7 @@ void* message_reciever_worker(void* arg){
         int offset = 1;
         IP_List temp = meta->ip_list;
         for(int ip = 0; ip < meta->ip_count; ip++){// for each ip
-            uint32_t ipad = temp->ip; // copy the ip 
+            uint32_t ipad = temp->ip; // copy the ip
             for(int b = 3; b >= 0; b--){ // bytes in decending order
                 ip_list_message->message[offset+b] |= ipad&0xFF; // set the byte
                 ipad >>= 8; // shift to next
@@ -341,8 +341,12 @@ int main(int argc, char* argv[]){
             read(meta->master_sock, buffer, MAXCONN*4);
             printf("List recieved from %s.\n",args->node_ip);
             uint8_t size = buffer[1];
+            for(int i = 0; i<20; i++){
+                printf("%2x ",buffer[i]);
+            }
+            printf("\nSIZE: %d\n",size);
             //add to ip list
-            for(int ipad = 2; ipad < size+2; ipad+=4){ // for each ip address
+            for(int ipad = 2; ipad < (size*4)+2; ipad+=4){ // for each ip address
                 uint32_t address = 0;
                 for(int b = 0; b < 4; b++){ // each byte in address
                     address |= buffer[ipad+b]; // get the byte
@@ -355,6 +359,7 @@ int main(int argc, char* argv[]){
             close(meta->master_sock);
             meta->master_sock = init_socket();
         }
+
         // Print the initial data
         printf("\nActive IP list:\n");
         IPL_print(meta->ip_list);
