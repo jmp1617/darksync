@@ -198,12 +198,7 @@ int send_message(Message m, int socket){
 // Threading
 void* message_reciever_worker(void* arg){
     Metadata meta = (Metadata)arg;
-    while(1){
-        while(meta->lock);
-        meta->lock = 1;
-        printf("Reciever: %d current active IP addresses\n",meta->ip_count);
-        meta->lock = 0;
-        printf("Reciever: waiting for messages...\n");
+    while(meta->lock!=2){
         if (listen(meta->reciever_s, MAXCONN) < 0){ 
             fprintf(stderr, "failed on listen\n"); 
             exit(EXIT_FAILURE); 
@@ -215,9 +210,6 @@ void* message_reciever_worker(void* arg){
             fprintf(stderr, "failed on accept");
             exit(EXIT_FAILURE);
         }
-        printf("Reciever: ");
-        print_ip(address.sin_addr.s_addr);
-        printf(" connected.\n");
         uint8_t message[1024] = {0};
         read(new_socket , message, 1024); 
         if(message[0]==ACTIVE_NODES_REQ){ // node list request
@@ -251,7 +243,7 @@ void* message_reciever_worker(void* arg){
 
         }
         else{ // otherwise drop
-            fprintf(stderr,"Reciever: bad message from ");
+            fprintf(stderr,"WARNING: bad message from ");
             print_ip(address.sin_addr.s_addr);
             fprintf(stderr,". Dropping and blacklisting.\n");
             close(new_socket);    
@@ -262,15 +254,14 @@ void* message_reciever_worker(void* arg){
 
 void* message_sender_worker(void* arg){
     Metadata meta = (Metadata)arg;
-    while(1){
+    while(meta->lock!=2){
         if(meta->ip_count > 0){
-            lock(meta);
-            printf("Sender: %d current active IP addresses\n",meta->ip_count);
-            unlock(meta);
             printf("> ");
             char message[MAXMSGLEN] = {0};
             fgets(message,MAXMSGLEN,stdin);
             printf("%s\n",message);
+            if(strcmp(message,"/quit"))
+                meta->lock = 2;
         }
     }
     return 0;

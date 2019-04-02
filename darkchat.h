@@ -52,7 +52,7 @@ struct metadata_s{
     int reciever_s;
     int sender_s;
     IP_List ip_list;
-    unsigned int lock: 1;
+    unsigned int lock: 2;
     unsigned int ipassive: 1;
 };
 typedef struct metadata_s* Metadata;
