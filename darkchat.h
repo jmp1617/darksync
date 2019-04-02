@@ -14,8 +14,10 @@
 #include <net/if.h>
 #include <pthread.h>
 
-#define LPORT 8686
+#define RPORT 8686
+#define SPORT 8687
 #define MAXCONN 50
+#define MAXMSGLEN 256
 
 //------- Identifiers
 #define ACTIVE_NODES_REQ 0xF0
@@ -47,7 +49,8 @@ void IPL_destroy(IP_List root);
 struct metadata_s{
     int ip_count;
     uint32_t my_ip;
-    int master_sock;
+    int reciever_s;
+    int sender_s;
     IP_List ip_list;
     unsigned int lock: 1;
     unsigned int ipassive: 1;
@@ -78,6 +81,10 @@ int send_message(Message m, int socket);
 //------- threading
 void* message_reciever_worker(void* arg);
 void* message_sender_worker(void* arg);
+
+//------- locks
+void lock(Metadata meta);
+void unlock(Metadata meta);
 
 //------- destruction
 void destructor(Arguments args, Metadata meta);
