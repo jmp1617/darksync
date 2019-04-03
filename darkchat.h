@@ -37,11 +37,12 @@ typedef struct arguments_s* Arguments;
 // Ip linked list
 struct ip_list_s{
     uint32_t ip;
+    char nick[20];
     struct ip_list_s* next;
 };
 typedef struct ip_list_s* IP_List;
 
-void IPL_add(uint32_t ip, IP_List* root);
+void IPL_add(uint32_t ip, IP_List* root, char* nickname);
 void IPL_print(IP_List root);
 void IPL_destroy(IP_List root);
 
@@ -51,6 +52,7 @@ struct metadata_s{
     uint32_t my_ip;
     int reciever_s;
     int sender_s;
+    char nick[20];
     IP_List ip_list;
     unsigned int lock: 2;
     unsigned int ipassive: 1;

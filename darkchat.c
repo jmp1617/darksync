@@ -1,11 +1,12 @@
 #include "darkchat.h"
 
 // Ip linked list
-void IPL_add(uint32_t ip, IP_List* root){
+void IPL_add(uint32_t ip, IP_List* root, char* nickname){
     if(!(*root)){
         (*root) = calloc(1,sizeof(struct ip_list_s));
         (*root)->ip = ip;
         (*root)->next = NULL;
+        memcpy((*root)->nick,nickname,20);
     }
     else{
         IP_List temp = *root;
@@ -14,6 +15,7 @@ void IPL_add(uint32_t ip, IP_List* root){
         }
         temp->next = calloc(1,sizeof(struct ip_list_s));
         temp->next->ip = ip;
+        memcpy(temp->next->nick,nickname,20);
         temp->next->next = NULL;
     }
 }
@@ -21,6 +23,7 @@ void IPL_add(uint32_t ip, IP_List* root){
 void IPL_print(IP_List root){
     if(root){
         print_ip(root->ip);
+        printf(" (%s)",root->nick);
         printf("\n");
         if(root->next)
             IPL_print(root->next);
@@ -129,7 +132,7 @@ void check_args(char* argv[]){
         }
     }
     // check nickname
-    if(strlen(argv[3])>20){
+    if(strlen(argv[3])>19){
         fprintf(stderr,"Try using a shorter nickname.\n");
         exit(EXIT_FAILURE);
     }
@@ -191,7 +194,8 @@ int send_message(Message m, int socket){
         for(int byte = 1; byte <= m->size; byte++){
             buffer[byte] = (m->message)[byte-1];
         }
-    send(socket , buffer , m->size, 0 ); 
+    send(socket , buffer , m->size, 0 );
+    free(buffer);
     return 0;
 }
 
@@ -207,21 +211,34 @@ void* message_reciever_worker(void* arg){
         int addrlen = sizeof(address);
         int new_socket;
         if ((new_socket = accept(meta->reciever_s, (struct sockaddr *)&address,(socklen_t*)&addrlen))<0){
-            fprintf(stderr, "failed on accept");
-            exit(EXIT_FAILURE);
+            if(meta->lock!=2){
+                fprintf(stderr, "failed on accept");
+                exit(EXIT_FAILURE);
+            }
+            else{
+                break;
+            }
         }
         uint8_t message[1024] = {0};
         read(new_socket , message, 1024); 
         if(message[0]==ACTIVE_NODES_REQ){ // node list request
             lock(meta);
-            IPL_add(address.sin_addr.s_addr,&(meta->ip_list));
+            //extract nickname
+            char temp_nick[20] = {0};
+            for(int c = 1; c <= 20; c++){
+                temp_nick[c-1] = message[c];
+            }
+            IPL_add(address.sin_addr.s_addr,&(meta->ip_list),temp_nick);
             meta->ip_count++;
             Message ip_list_message = calloc(1,sizeof(struct message_s));
             ip_list_message->identifier = NODE_RES;
-            ip_list_message->size = (meta->ip_count*4)+2;
-            ip_list_message->message = calloc((meta->ip_count*4)+2,1);
+            ip_list_message->size = (meta->ip_count*4)+2+20;
+            ip_list_message->message = calloc((meta->ip_count*4)+2+20,1);
             ip_list_message->message[0] = meta->ip_count;
-            int offset = 1;
+            for(int c = 1; c <= 20; c++){
+                ip_list_message->message[c] = meta->nick[c-1];
+            }
+            int offset = 1+20;
             IP_List temp = meta->ip_list;
             for(int ip = 0; ip < meta->ip_count; ip++){// for each ip
                 uint32_t ipad = temp->ip; // copy the ip
@@ -234,6 +251,8 @@ void* message_reciever_worker(void* arg){
             }
             unlock(meta);
             send_message(ip_list_message, new_socket);
+            free(ip_list_message->message);
+            free(ip_list_message);
             close(new_socket);
         }
         else if(message[0]==DISCONNECT){ // disconnect 
@@ -259,9 +278,12 @@ void* message_sender_worker(void* arg){
             printf("> ");
             char message[MAXMSGLEN] = {0};
             fgets(message,MAXMSGLEN,stdin);
-            printf("%s\n",message);
-            if(strcmp(message,"/quit"))
+            printf("%s",message);
+            if(message[0]=='/'&&message[1]=='q'&&message[2]=='\n'){
+                printf("Quitting...\n");
                 meta->lock = 2;
+                shutdown(meta->reciever_s,SHUT_RDWR);
+            }
         }
     }
     return 0;
@@ -313,6 +335,7 @@ int main(int argc, char* argv[]){
         
         // Initialize Metadata
         Metadata meta = calloc(1,sizeof(struct metadata_s));
+        memcpy(meta->nick,args->nickname,20);
         if(argv[2][0]=='p'){
             meta->ipassive = 1;
             strncpy(args->node_ip, "passive", 8);
@@ -330,7 +353,7 @@ int main(int argc, char* argv[]){
             fprintf(stderr,"%s is not a valid interface.\n",argv[4]);
             exit(EXIT_FAILURE);
         }
-        IPL_add(meta->my_ip,&(meta->ip_list)); //initial list only contains yourself
+        IPL_add(meta->my_ip,&(meta->ip_list),meta->nick); //initial list only contains yourself
         printf("Welcome, %s\nReciever service binding to ",args->nickname);
         print_ip(meta->my_ip);
         printf(":%d\nSender service binding to ",RPORT);
@@ -343,11 +366,13 @@ int main(int argc, char* argv[]){
         
         // ask for the itial nodes ip list 
         if(!meta->ipassive){
-            printf("Asking %s for active ip list...\n",args->node_ip);
+            printf("\nAsking %s for active ip list...\n",args->node_ip);
             // create the message;
             Message request = calloc(1,sizeof(struct message_s));
             request->identifier = ACTIVE_NODES_REQ;
-            request->size = 1;
+            request->size = 1+20; // ident and nick
+            request->message = calloc(20,1);
+            memcpy(request->message,meta->nick,20);
             // connect to node
             struct sockaddr_in node;
             node.sin_family = AF_INET;
@@ -357,21 +382,27 @@ int main(int argc, char* argv[]){
                 exit(EXIT_FAILURE);
             }
             while(connect(meta->sender_s, (struct sockaddr *)&node, sizeof(node)) < 0);
-            send_message(request, meta->sender_s); 
+            send_message(request, meta->sender_s);
+            free(request->message);
             free(request);
-            uint8_t buffer[(MAXCONN*4)+2]={0};
+            uint8_t buffer[(MAXCONN*4)+2+20]={0};
             read(meta->sender_s, buffer, MAXCONN*4);
             printf("List recieved from %s.\n",args->node_ip);
             uint8_t size = buffer[1];
+            //extract nickname
+            char temp_nick[20] = {0};
+            for( int c = 1; c <= 20; c++ ){
+                temp_nick[c-1] = buffer[c];
+            }
             //add to ip list
-            for(int ipad = 2; ipad < (size*4)+2; ipad+=4){ // for each ip address
+            for(int ipad = 2+20; ipad < (size*4)+2+20; ipad+=4){ // for each ip address
                 uint32_t address = 0;
                 for(int b = 0; b < 4; b++){ // each byte in address
                     address |= buffer[ipad+b]; // get the byte
                     if(b!=3) // shift if not the end byte
                         address <<= 8;
                 }
-                IPL_add(address,&(meta->ip_list)); // add the ip to the master list
+                IPL_add(address,&(meta->ip_list),temp_nick); // add the ip to master list
             }
             //reinit socket
             close(meta->sender_s);
