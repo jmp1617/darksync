@@ -71,6 +71,10 @@ struct message_s{
 };
 typedef struct message_s* Message;
 
+//------- blacklist
+void load_blacklist(IP_List root);
+void dump_blacklist(IP_List root);
+
 //------- voids
 void print_usage(); // print the usage
 void create_directories(); // create the .darkchat and keys if not present

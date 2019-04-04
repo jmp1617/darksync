@@ -38,6 +38,19 @@ void IPL_destroy(IP_List root){
     }
 }
 
+char* IPL_contains(uint32_t ip, IP_List root){
+    char* ret = NULL;
+    if(root){
+        if(root->ip == ip){
+            ret = calloc(20,1);
+            memcpy(ret, root->nick, 20);
+        }
+        if(root->next)
+            IPL_contains(ip,root->next);
+    }
+    return ret;
+}
+
 // Aux
 uint32_t conv_ip(char* ip){
     uint32_t result=0;
@@ -79,6 +92,15 @@ uint32_t conv_ip(char* ip){
             result <<= 8;
     }
     return result;
+}
+
+// Blacklist
+void load_blacklist(IP_List root){
+
+}
+
+void dump_blacklist(IP_List root){
+
 }
 
 // Voids
@@ -219,61 +241,65 @@ void* message_reciever_worker(void* arg){
                 break;
             }
         }
-        // - Blacklist check
-
-        // -
-        uint8_t message[1024] = {0};
-        read(new_socket , message, 1024); 
-        if(message[0]==ACTIVE_NODES_REQ){ // node list request
-            lock(meta);
-            //extract nickname
-            char temp_nick[20] = {0};
-            for(int c = 1; c <= 20; c++){
-                temp_nick[c-1] = message[c];
-            }
-            IPL_add(address.sin_addr.s_addr,&(meta->ip_list),temp_nick);
-            meta->ip_count++;
-            Message ip_list_message = calloc(1,sizeof(struct message_s));
-            ip_list_message->identifier = NODE_RES;
-            ip_list_message->size = (meta->ip_count*4)+2+20;
-            ip_list_message->message = calloc((meta->ip_count*4)+2+20,1);
-            ip_list_message->message[0] = meta->ip_count;
-            for(int c = 1; c <= 20; c++){
-                ip_list_message->message[c] = meta->nick[c-1];
-            }
-            int offset = 1+20;
-            IP_List temp = meta->ip_list;
-            for(int ip = 0; ip < meta->ip_count; ip++){// for each ip
-                uint32_t ipad = temp->ip; // copy the ip
-                for(int b = 3; b >= 0; b--){ // bytes in decending order
-                    ip_list_message->message[offset+b] |= ipad&0xFF; // set the byte
-                    ipad >>= 8; // shift to next
+        if(IPL_contains(address.sin_addr.s_addr,meta->blacklist)) // blacklist check
+            close(new_socket); // ciao ciao 
+        else{
+            uint8_t message[1024] = {0};
+            read(new_socket , message, 1024); 
+            if(message[0]==ACTIVE_NODES_REQ){ // node list request
+                lock(meta);
+                //extract nickname
+                char temp_nick[20] = {0};
+                for(int c = 1; c <= 20; c++){
+                    temp_nick[c-1] = message[c];
                 }
-                offset+=4; // jump forward 4 bytes in the message
-                temp = temp->next; // get the next ip
+                IPL_add(address.sin_addr.s_addr,&(meta->ip_list),temp_nick);
+                meta->ip_count++;
+                Message ip_list_message = calloc(1,sizeof(struct message_s));
+                ip_list_message->identifier = NODE_RES;
+                ip_list_message->size = (meta->ip_count*4)+2+20;
+                ip_list_message->message = calloc((meta->ip_count*4)+2+20,1);
+                ip_list_message->message[0] = meta->ip_count;
+                for(int c = 1; c <= 20; c++){
+                    ip_list_message->message[c] = meta->nick[c-1];
+                }
+                int offset = 1+20;
+                IP_List temp = meta->ip_list;
+                for(int ip = 0; ip < meta->ip_count; ip++){// for each ip
+                    uint32_t ipad = temp->ip; // copy the ip
+                    for(int b = 3; b >= 0; b--){ // bytes in decending order
+                        ip_list_message->message[offset+b] |= ipad&0xFF; // set the byte
+                        ipad >>= 8; // shift to next
+                    }
+                    offset+=4; // jump forward 4 bytes in the message
+                    temp = temp->next; // get the next ip
+                }
+                unlock(meta);
+                send_message(ip_list_message, new_socket);
+                free(ip_list_message->message);
+                free(ip_list_message);
+                close(new_socket);
             }
-            unlock(meta);
-            send_message(ip_list_message, new_socket);
-            free(ip_list_message->message);
-            free(ip_list_message);
-            close(new_socket);
-        }
-        else if(message[0]==DISCONNECT){ // disconnect 
+            else if(message[0]==DISCONNECT){ // disconnect 
 
-        }
-        else if(message[0]==STD_MSG){ // normal message 
+            }
+            else if(message[0]==STD_MSG){ // normal message 
 
-        }
-        else if(message[0]==HELLO){ // new peer
+            }
+            else if(message[0]==HELLO){ // new peer
 
-        }
-        else{ // otherwise drop
-            fprintf(stderr,"WARNING: bad message from ");
-            print_ip(address.sin_addr.s_addr);
-            fprintf(stderr,". Dropping and blacklisting.\n");
-            IPL_add(address.sin_addr.s_addr,&(meta->blacklist),"bad");
-            meta->emit_black = 1;
-            close(new_socket);    
+            }
+            else if(message[0]==BL_UPD){ // new ip to blacklist
+
+            }
+            else{ // otherwise drop
+                fprintf(stderr,"WARNING: bad message from ");
+                print_ip(address.sin_addr.s_addr);
+                fprintf(stderr,". Dropping and blacklisting.\n");
+                IPL_add(address.sin_addr.s_addr,&(meta->blacklist),"bad");
+                meta->emit_black = 1;
+                close(new_socket);    
+            }
         }
     }
     return 0;
