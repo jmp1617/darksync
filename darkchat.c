@@ -219,6 +219,9 @@ void* message_reciever_worker(void* arg){
                 break;
             }
         }
+        // - Blacklist check
+
+        // -
         uint8_t message[1024] = {0};
         read(new_socket , message, 1024); 
         if(message[0]==ACTIVE_NODES_REQ){ // node list request
@@ -261,10 +264,15 @@ void* message_reciever_worker(void* arg){
         else if(message[0]==STD_MSG){ // normal message 
 
         }
+        else if(message[0]==HELLO){ // new peer
+
+        }
         else{ // otherwise drop
             fprintf(stderr,"WARNING: bad message from ");
             print_ip(address.sin_addr.s_addr);
             fprintf(stderr,". Dropping and blacklisting.\n");
+            IPL_add(address.sin_addr.s_addr,&(meta->blacklist),"bad");
+            meta->emit_black = 1;
             close(new_socket);    
         }
     }
@@ -336,6 +344,7 @@ int main(int argc, char* argv[]){
         // Initialize Metadata
         Metadata meta = calloc(1,sizeof(struct metadata_s));
         memcpy(meta->nick,args->nickname,20);
+        meta->emit_black = 0;
         if(argv[2][0]=='p'){
             meta->ipassive = 1;
             strncpy(args->node_ip, "passive", 8);

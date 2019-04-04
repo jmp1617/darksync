@@ -24,6 +24,8 @@
 #define DISCONNECT 0xF1
 #define STD_MSG 0xF2
 #define NODE_RES 0xF3
+#define HELLO 0xF4
+#define BL_UPD 0xF5
 
 //------- Structures
 // User Input
@@ -45,6 +47,7 @@ typedef struct ip_list_s* IP_List;
 void IPL_add(uint32_t ip, IP_List* root, char* nickname);
 void IPL_print(IP_List root);
 void IPL_destroy(IP_List root);
+char* IPL_contains(uint32_t ip, IP_List root);
 
 // Metadata 
 struct metadata_s{
@@ -54,8 +57,10 @@ struct metadata_s{
     int sender_s;
     char nick[20];
     IP_List ip_list;
+    IP_List blacklist;
     unsigned int lock: 2;
     unsigned int ipassive: 1;
+    unsigned int emit_black: 1;
 };
 typedef struct metadata_s* Metadata;
 
