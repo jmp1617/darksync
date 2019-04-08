@@ -100,7 +100,20 @@ void load_blacklist(IP_List root){
 }
 
 void dump_blacklist(IP_List root){
-
+    char path[1024] = {0};
+    strcat(path,"/home/");
+    strcat(path,getlogin());
+    strcat(path,"/.darkchat/blacklist.txt");
+    FILE* blacklist = fopen(path, "a+");
+    IP_List temp = root;
+    while(temp){
+        uint8_t octet[4]={0};
+        for(int i = 0 ; i < 4 ; i++)
+            octet[i] = temp->ip >> (i * 8);
+        fprintf(blacklist,"%d.%d.%d.%d\n",octet[0],octet[1],octet[2],octet[3]);
+        temp = temp->next;
+    }
+    fclose(blacklist);
 }
 
 // Voids
@@ -457,6 +470,7 @@ int main(int argc, char* argv[]){
         pthread_join(thread_id_reciever, &thread_ret);
         pthread_join(thread_id_sender, &thread_ret);
         
+        dump_blacklist(meta->blacklist);
         // Free the malloc
         destructor(args,meta);
     }
