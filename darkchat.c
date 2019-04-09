@@ -95,8 +95,23 @@ uint32_t conv_ip(char* ip){
 }
 
 // Blacklist
-void load_blacklist(IP_List root){
-
+void load_blacklist(IP_List* root){
+    char path[1024] = {0};
+    strcat(path,"/home/");
+    strcat(path,getlogin());
+    strcat(path,"/.darkchat/blacklist.txt");
+    FILE* blacklist = fopen(path, "r");
+    if(blacklist){
+        size_t n = 0;
+        char* ip = NULL;
+        getline(&ip,&n,blacklist);
+        while(strlen(ip) > 6){
+            IPL_add(conv_ip(ip),root,"bad");
+            ip = NULL;
+            getline(&ip,&n,blacklist);
+        }
+        fclose(blacklist);
+    }
 }
 
 void dump_blacklist(IP_List root){
@@ -104,7 +119,7 @@ void dump_blacklist(IP_List root){
     strcat(path,"/home/");
     strcat(path,getlogin());
     strcat(path,"/.darkchat/blacklist.txt");
-    FILE* blacklist = fopen(path, "a+");
+    FILE* blacklist = fopen(path, "w+");
     IP_List temp = root;
     while(temp){
         uint8_t octet[4]={0};
@@ -384,6 +399,7 @@ int main(int argc, char* argv[]){
         Metadata meta = calloc(1,sizeof(struct metadata_s));
         memcpy(meta->nick,args->nickname,20);
         meta->emit_black = 0;
+        load_blacklist(&meta->blacklist);
         if(argv[2][0]=='p'){
             meta->ipassive = 1;
             strncpy(args->node_ip, "passive", 8);
