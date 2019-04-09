@@ -352,14 +352,19 @@ void* message_sender_worker(void* arg){
     Metadata meta = (Metadata)arg;
     while(meta->lock!=2){
         if(meta->ip_count > 0){
+            if(meta->emit_black){ // new blacklist item, send it to everyone
+
+            }
             printf("> ");
             char message[MAXMSGLEN] = {0};
             fgets(message,MAXMSGLEN,stdin);
-            printf("%s",message);
             if(message[0]=='/'&&message[1]=='q'&&message[2]=='\n'){
                 printf("Quitting...\n");
                 meta->lock = 2;
                 shutdown(meta->reciever_s,SHUT_RDWR);
+            }
+            else{ // normal message
+
             }
         }
     }
@@ -501,6 +506,27 @@ int main(int argc, char* argv[]){
             //reinit socket
             close(meta->sender_s);
             meta->sender_s = init_socket(SPORT);
+            // say hello
+            request = calloc(1,sizeof(struct message_s));
+            request->identifier = HELLO;
+            request->size = 1+20; // ident and nick
+            request->message = calloc(20,1);
+            memcpy(request->message,meta->nick,20);
+            IP_List temp = meta->ip_list;
+            for(int ip; ip < meta->ip_count; ip++){
+                // connect to node
+                struct sockaddr_in node;
+                node.sin_family = AF_INET;
+                node.sin_port = htons(RPORT);
+                node.sin_addr.s_addr = temp->ip;
+                while(connect(meta->sender_s, (struct sockaddr *)&node, sizeof(node)) < 0);
+                send_message(request, meta->sender_s);
+                close(meta->sender_s);
+                meta->sender_s = init_socket(SPORT);
+                temp=temp->next;
+            }
+            free(request->message);
+            free(request);
         }
 
         // Print the initial data
