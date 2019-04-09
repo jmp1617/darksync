@@ -48,6 +48,7 @@ void IPL_add(uint32_t ip, IP_List* root, char* nickname);
 void IPL_print(IP_List root);
 void IPL_destroy(IP_List root);
 char* IPL_contains(uint32_t ip, IP_List root);
+int IPL_remove(uint32_t ip, IP_List* root);
 
 // Metadata 
 struct metadata_s{

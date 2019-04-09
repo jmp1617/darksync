@@ -51,6 +51,33 @@ char* IPL_contains(uint32_t ip, IP_List root){
     return ret;
 }
 
+int IPL_remove(uint32_t ip, IP_List* root){
+    IP_List temp = *root;
+    if(temp->ip == ip){ // its the head
+        temp = (*root)->next;
+        free(*root);
+        (*root) = temp;
+        return 1;
+    }
+    else{ // find it
+        IP_List prev = (*root);
+        IP_List current = (*root)->next;
+        while(current && current->ip != ip){
+            prev = current;
+            current = prev->next;
+        }
+        // remove current
+        if(current){
+            IP_List temp = current->next;
+            free(current);
+            prev->next = temp;
+            return 1;
+        }
+        else
+            return 0;
+    }
+}
+
 // Aux
 uint32_t conv_ip(char* ip){
     uint32_t result=0;
