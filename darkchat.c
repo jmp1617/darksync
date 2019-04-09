@@ -97,8 +97,7 @@ uint32_t conv_ip(char* ip){
 // Blacklist
 void load_blacklist(IP_List* root, Metadata meta){
     char path[1024] = {0};
-    strcat(path,"/home/");
-    strcat(path,getlogin());
+    strcat(path, getenv("HOME"));
     strcat(path,"/.darkchat/blacklist.txt");
     FILE* blacklist = fopen(path, "r");
     if(blacklist){
@@ -117,8 +116,7 @@ void load_blacklist(IP_List* root, Metadata meta){
 
 void dump_blacklist(IP_List root){
     char path[1024] = {0};
-    strcat(path,"/home/");
-    strcat(path,getlogin());
+    strcat(path, getenv("HOME"));
     strcat(path,"/.darkchat/blacklist.txt");
     FILE* blacklist = fopen(path, "w+");
     IP_List temp = root;
@@ -145,8 +143,7 @@ void print_usage(){
 void create_directories(){
         struct stat st = {0};
         char path[1024] = {0};
-        strcat(path,"/home/");
-        strcat(path,getlogin());
+        strcat(path, getenv("HOME"));
         strcat(path,"/.darkchat");
         if (stat(path, &st) == -1)
             mkdir(path, 0700);
@@ -339,8 +336,11 @@ void* message_reciever_worker(void* arg){
                 fprintf(stderr,"WARNING: bad message from ");
                 print_ip(address.sin_addr.s_addr);
                 fprintf(stderr,". Dropping and blacklisting.\n");
+                lock(meta);
                 IPL_add(address.sin_addr.s_addr,&(meta->blacklist),"bad");
+                meta->blacklist_count++;
                 meta->emit_black = 1;
+                unlock(meta);
                 close(new_socket);    
             }
         }
@@ -475,7 +475,8 @@ int main(int argc, char* argv[]){
                 temp_nick[c-1] = buffer[c];
             }
             //add to ip list
-            for(int ipad = 2+20; ipad < (size*4)+2+20; ipad+=4){ // for each ip address
+            int ipad = 2+20;
+            for(ipad = ipad; ipad < (size*4)+2+20; ipad+=4){ // for each ip address
                 uint32_t address = 0;
                 for(int b = 0; b < 4; b++){ // each byte in address
                     address |= buffer[ipad+b]; // get the byte
@@ -483,6 +484,19 @@ int main(int argc, char* argv[]){
                         address <<= 8;
                 }
                 IPL_add(address,&(meta->ip_list),temp_nick); // add the ip to master list
+                meta->ip_count++;
+            }
+            uint8_t black_size = buffer[ipad];
+            ipad++;
+            for(ipad = ipad; ipad < (size*4)+2+20+1+(black_size*4);ipad+=4){
+                uint32_t address = 0;
+                for(int b = 0; b < 4; b++){ // each byte in address
+                    address |= buffer[ipad+b]; // get the byte
+                    if(b!=3) // shift if not the end byte
+                        address <<= 8;
+                }
+                IPL_add(address,&(meta->blacklist),"bad"); // add the ip to master list
+                meta->blacklist_count++;
             }
             //reinit socket
             close(meta->sender_s);
@@ -501,8 +515,10 @@ int main(int argc, char* argv[]){
         pthread_create(&thread_id_sender, NULL, message_sender_worker, meta);
         pthread_join(thread_id_reciever, &thread_ret);
         pthread_join(thread_id_sender, &thread_ret);
-        
-        dump_blacklist(meta->blacklist);
+       
+        // Save the blacklist
+        if(meta->blacklist)
+            dump_blacklist(meta->blacklist);
         // Free the malloc
         destructor(args,meta);
     }
