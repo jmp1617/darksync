@@ -321,16 +321,36 @@ void* message_reciever_worker(void* arg){
                 close(new_socket);
             }
             else if(message[0]==DISCONNECT){ // disconnect 
-
+                //TODO
             }
             else if(message[0]==STD_MSG){ // normal message 
-
+                //TODO
             }
             else if(message[0]==HELLO){ // new peer
-
+                char temp_nick[20] = {0};
+                for(int c = 1; c <= 20; c++){
+                    temp_nick[c-1] = message[c];
+                }
+                lock(meta);
+                if(!IPL_contains(address.sin_addr.s_addr,meta->ip_list)){
+                    IPL_add(address.sin_addr.s_addr,&(meta->ip_list),temp_nick);
+                    meta->ip_count++;
+                }
+                unlock(meta);
             }
             else if(message[0]==BL_UPD){ // new ip to blacklist
-
+                uint32_t address = 0;
+                for(int b = 0; b < 4; b++){ // each byte in address
+                    address |= message[1+b]; // get the byte
+                    if(b!=3) // shift if not the end byte
+                        address <<= 8;
+                }
+                lock(meta);
+                if(!IPL_contains(address,meta->blacklist)){
+                    IPL_add(address,&(meta->blacklist),"bad"); // add the ip to master list
+                    meta->blacklist_count++;
+                }
+                unlock(meta);
             }
             else{ // otherwise drop
                 fprintf(stderr,"WARNING: bad message from ");
@@ -352,16 +372,47 @@ void* message_sender_worker(void* arg){
     Metadata meta = (Metadata)arg;
     while(meta->lock!=2){
         if(meta->ip_count > 0){
+            lock(meta);
             if(meta->emit_black){ // new blacklist item, send it to everyone
-
+                //grab the most recent addition to the list
+                IP_List temp = meta->ip_list;
+                while(temp->next)
+                    temp = temp->next;
+                uint32_t new_black = temp->ip;
+                Message bl_message = calloc(1,sizeof(struct message_s));
+                bl_message->identifier = BL_UPD;
+                bl_message->size = 21; // ident and ip
+                bl_message->message = calloc(20,1);
+                for(int b = 3; b >= 0; b--){ // bytes in decending order
+                    bl_message->message[b] |= new_black&0xFF; // set the byte
+                    new_black >>= 8; // shift to next
+                }
+                IP_List temp_ip = meta->ip_list;
+                for(int ip; ip < meta->ip_count; ip++){
+                    // connect to node
+                    struct sockaddr_in node;
+                    node.sin_family = AF_INET;
+                    node.sin_port = htons(RPORT);
+                    node.sin_addr.s_addr = temp_ip->ip;
+                    while(connect(meta->sender_s, (struct sockaddr *)&node, sizeof(node)) < 0);
+                    send_message(bl_message, meta->sender_s);
+                    close(meta->sender_s);
+                    meta->sender_s = init_socket(SPORT);
+                    temp=temp->next;
+                }
+                free(bl_message->message);
+                free(bl_message);
             }
+            unlock(meta);
             printf("> ");
             char message[MAXMSGLEN] = {0};
             fgets(message,MAXMSGLEN,stdin);
             if(message[0]=='/'&&message[1]=='q'&&message[2]=='\n'){
                 printf("Quitting...\n");
+                lock(meta);
                 meta->lock = 2;
                 shutdown(meta->reciever_s,SHUT_RDWR);
+                unlock(meta);
             }
             else{ // normal message
 
