@@ -95,7 +95,7 @@ uint32_t conv_ip(char* ip){
 }
 
 // Blacklist
-void load_blacklist(IP_List* root){
+void load_blacklist(IP_List* root, Metadata meta){
     char path[1024] = {0};
     strcat(path,"/home/");
     strcat(path,getlogin());
@@ -107,6 +107,7 @@ void load_blacklist(IP_List* root){
         getline(&ip,&n,blacklist);
         while(strlen(ip) > 6){
             IPL_add(conv_ip(ip),root,"bad");
+            meta->blacklist_count++;
             ip = NULL;
             getline(&ip,&n,blacklist);
         }
@@ -285,8 +286,8 @@ void* message_reciever_worker(void* arg){
                 meta->ip_count++;
                 Message ip_list_message = calloc(1,sizeof(struct message_s));
                 ip_list_message->identifier = NODE_RES;
-                ip_list_message->size = (meta->ip_count*4)+2+20;
-                ip_list_message->message = calloc((meta->ip_count*4)+2+20,1);
+                ip_list_message->size = (meta->ip_count*4)+2+20+1+(meta->blacklist_count*4);
+                ip_list_message->message = calloc((meta->ip_count*4)+2+20+1+(meta->blacklist_count*4),1);
                 ip_list_message->message[0] = meta->ip_count;
                 for(int c = 1; c <= 20; c++){
                     ip_list_message->message[c] = meta->nick[c-1];
@@ -302,6 +303,20 @@ void* message_reciever_worker(void* arg){
                     offset+=4; // jump forward 4 bytes in the message
                     temp = temp->next; // get the next ip
                 }
+                // add current blacklist
+                ip_list_message->message[offset] = meta->blacklist_count;
+                offset++;
+                temp = meta->blacklist;
+                for(int ip = 0; ip < meta->blacklist_count; ip++){// for each ip
+                    uint32_t ipad = temp->ip; // copy the ip
+                    for(int b = 3; b >= 0; b--){ // bytes in decending order
+                        ip_list_message->message[offset+b] |= ipad&0xFF; // set the byte
+                        ipad >>= 8; // shift to next
+                    }
+                    offset+=4; // jump forward 4 bytes in the message
+                    temp = temp->next; // get the next ip
+                }
+                //
                 unlock(meta);
                 send_message(ip_list_message, new_socket);
                 free(ip_list_message->message);
@@ -399,7 +414,8 @@ int main(int argc, char* argv[]){
         Metadata meta = calloc(1,sizeof(struct metadata_s));
         memcpy(meta->nick,args->nickname,20);
         meta->emit_black = 0;
-        load_blacklist(&meta->blacklist);
+        meta->blacklist_count = 0;
+        load_blacklist(&meta->blacklist, meta);
         if(argv[2][0]=='p'){
             meta->ipassive = 1;
             strncpy(args->node_ip, "passive", 8);

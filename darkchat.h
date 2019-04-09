@@ -52,6 +52,7 @@ char* IPL_contains(uint32_t ip, IP_List root);
 // Metadata 
 struct metadata_s{
     int ip_count;
+    int blacklist_count;
     uint32_t my_ip;
     int reciever_s;
     int sender_s;
@@ -72,7 +73,7 @@ struct message_s{
 typedef struct message_s* Message;
 
 //------- blacklist
-void load_blacklist(IP_List* root);
+void load_blacklist(IP_List* root, Metadata meta);
 void dump_blacklist(IP_List root);
 
 //------- voids
