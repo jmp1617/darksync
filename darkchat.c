@@ -42,7 +42,7 @@ char* IPL_contains(uint32_t ip, IP_List root){
     char* ret = NULL;
     if(root){
         if(root->ip == ip){
-            ret = calloc(20,1);
+            ret = malloc(20);
             memcpy(ret, root->nick, 20);
             return ret;
         }
@@ -131,13 +131,14 @@ void load_blacklist(IP_List* root, Metadata meta){
     if(blacklist){
         size_t n = 0;
         char* ip = NULL;
-        getline(&ip,&n,blacklist);
-        while(strlen(ip) > 6){
+        int nread = 0;
+        nread = getline(&ip,&n,blacklist);
+        while(nread != -1){
             IPL_add(conv_ip(ip),root,"bad");
             meta->blacklist_count++;
             free(ip);
             ip = NULL;
-            getline(&ip,&n,blacklist);
+            nread = getline(&ip,&n,blacklist);
         }
         fclose(blacklist);
         free(ip);
@@ -497,8 +498,8 @@ int main(int argc, char* argv[]){
         // Load arguments
         Arguments args = calloc(1, sizeof(struct arguments_s));
         args->key = calloc(1,strlen(argv[1])+1);
-        args->node_ip = calloc(1,strlen(argv[2])+1);
-        args->nickname = calloc(1,strlen(argv[3])+1);
+        args->node_ip = malloc(20);
+        args->nickname = malloc(20);
         strncpy(args->key, argv[1], strlen(argv[1])+1);
         strncpy(args->nickname, argv[3], strlen(argv[3])+1);
         
@@ -546,7 +547,7 @@ int main(int argc, char* argv[]){
             Message request = calloc(1,sizeof(struct message_s));
             request->identifier = ACTIVE_NODES_REQ;
             request->size = 1+20; // ident and nick
-            request->message = calloc(20,1);
+            request->message = malloc(20);
             memcpy(request->message,meta->nick,20);
             // connect to node
             struct sockaddr_in node;
@@ -605,7 +606,7 @@ int main(int argc, char* argv[]){
             request = calloc(1,sizeof(struct message_s));
             request->identifier = HELLO;
             request->size = 1+20; // ident and nick
-            request->message = calloc(20,1);
+            request->message = malloc(20);
             memcpy(request->message,meta->nick,20);
             IP_List temp = meta->ip_list->next;
             for(int ip = 1; ip < meta->ip_count; ip++){

@@ -11,5 +11,5 @@ endif
 default: darkchat
 
 darkchat: darkchat.c darkchat.h
-	$(CC) $(CFLAGS) -o darkchat darkchat.c darkchat.h
+	$(CC) $(CFLAGS) -g -o darkchat darkchat.c darkchat.h
 
