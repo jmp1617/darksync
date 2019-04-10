@@ -346,7 +346,6 @@ void* message_reciever_worker(void* arg){
                 free(ip_list_message->message);
                 free(ip_list_message);
                 close(new_socket);
-                printf("Node List request complete...\n");
             }
             else if(message[0]==DISCONNECT){ // disconnect 
                 //TODO
@@ -578,8 +577,10 @@ int main(int argc, char* argv[]){
                     if(b!=3) // shift if not the end byte
                         address <<= 8;
                 }
-                IPL_add(address,&(meta->blacklist),"bad"); // add the ip to master list
-                meta->blacklist_count++;
+                if(!IPL_contains(address,meta->blacklist)){
+                    IPL_add(address,&(meta->blacklist),"bad"); // add the ip to master list
+                    meta->blacklist_count++;
+                }
             }
             //reinit socket
             close(meta->sender_s);
@@ -620,7 +621,7 @@ int main(int argc, char* argv[]){
         pthread_create(&thread_id_sender, NULL, message_sender_worker, meta);
         pthread_join(thread_id_reciever, &thread_ret);
         pthread_join(thread_id_sender, &thread_ret);
-       
+        
         // Save the blacklist
         if(meta->blacklist)
             dump_blacklist(meta->blacklist);
