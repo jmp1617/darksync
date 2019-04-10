@@ -287,7 +287,7 @@ void* message_reciever_worker(void* arg){
         int new_socket;
         if ((new_socket = accept(meta->reciever_s, (struct sockaddr *)&address,(socklen_t*)&addrlen))<0){
             if(meta->lock!=2){
-                fprintf(stderr, "failed on accept");
+                printf("failed on accept");
                 exit(EXIT_FAILURE);
             }
             else{
@@ -346,6 +346,7 @@ void* message_reciever_worker(void* arg){
                 free(ip_list_message->message);
                 free(ip_list_message);
                 close(new_socket);
+                printf("Node List request complete...\n");
             }
             else if(message[0]==DISCONNECT){ // disconnect 
                 //TODO
@@ -415,6 +416,7 @@ void* message_sender_worker(void* arg){
                     new_black >>= 8; // shift to next
                 }
                 IP_List temp_ip = meta->ip_list;
+                printf("Sending new blacklist item...\n");
                 for(int ip; ip < meta->ip_count; ip++){
                     // connect to node
                     struct sockaddr_in node;
@@ -436,10 +438,8 @@ void* message_sender_worker(void* arg){
             fgets(message,MAXMSGLEN,stdin);
             if(message[0]=='/'&&message[1]=='q'&&message[2]=='\n'){
                 printf("Quitting...\n");
-                lock(meta);
                 meta->lock = 2;
                 shutdown(meta->reciever_s,SHUT_RDWR);
-                unlock(meta);
             }
             else{ // normal message
 
@@ -585,13 +585,14 @@ int main(int argc, char* argv[]){
             close(meta->sender_s);
             meta->sender_s = init_socket(SPORT);
             // say hello
+            printf("Saying hello...\n");
             request = calloc(1,sizeof(struct message_s));
             request->identifier = HELLO;
             request->size = 1+20; // ident and nick
             request->message = calloc(20,1);
             memcpy(request->message,meta->nick,20);
-            IP_List temp = meta->ip_list;
-            for(int ip; ip < meta->ip_count; ip++){
+            IP_List temp = meta->ip_list->next;
+            for(int ip = 1; ip < meta->ip_count; ip++){
                 // connect to node
                 struct sockaddr_in node;
                 node.sin_family = AF_INET;
