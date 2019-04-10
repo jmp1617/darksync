@@ -44,9 +44,10 @@ char* IPL_contains(uint32_t ip, IP_List root){
         if(root->ip == ip){
             ret = calloc(20,1);
             memcpy(ret, root->nick, 20);
+            return ret;
         }
         if(root->next)
-            IPL_contains(ip,root->next);
+            ret = IPL_contains(ip,root->next);
     }
     return ret;
 }
@@ -134,10 +135,12 @@ void load_blacklist(IP_List* root, Metadata meta){
         while(strlen(ip) > 6){
             IPL_add(conv_ip(ip),root,"bad");
             meta->blacklist_count++;
+            free(ip);
             ip = NULL;
             getline(&ip,&n,blacklist);
         }
         fclose(blacklist);
+        free(ip);
     }
 }
 
@@ -294,8 +297,11 @@ void* message_reciever_worker(void* arg){
                 break;
             }
         }
-        if(IPL_contains(address.sin_addr.s_addr,meta->blacklist)) // blacklist check
-            close(new_socket); // ciao ciao 
+        char* nick = IPL_contains(address.sin_addr.s_addr,meta->blacklist); 
+        if(nick){ // blacklist check
+            close(new_socket); // ciao ciao
+            free(nick);
+        }
         else{
             uint8_t message[1024] = {0};
             read(new_socket , message, 1024); 
@@ -359,10 +365,13 @@ void* message_reciever_worker(void* arg){
                     temp_nick[c-1] = message[c];
                 }
                 lock(meta);
-                if(!IPL_contains(address.sin_addr.s_addr,meta->ip_list)){
+                char* nick = IPL_contains(address.sin_addr.s_addr,meta->ip_list); 
+                if(!nick){
                     IPL_add(address.sin_addr.s_addr,&(meta->ip_list),temp_nick);
                     meta->ip_count++;
                 }
+                else
+                    free(nick);
                 unlock(meta);
             }
             else if(message[0]==BL_UPD){ // new ip to blacklist
@@ -373,10 +382,13 @@ void* message_reciever_worker(void* arg){
                         address <<= 8;
                 }
                 lock(meta);
-                if(!IPL_contains(address,meta->blacklist)){
+                char* nick = IPL_contains(address,meta->blacklist);
+                if(!nick){
                     IPL_add(address,&(meta->blacklist),"bad"); // add the ip to master list
                     meta->blacklist_count++;
                 }
+                else
+                    free(nick);
                 unlock(meta);
             }
             else{ // otherwise drop
@@ -468,6 +480,7 @@ void destructor(Arguments args, Metadata meta){
     }
     if(meta){
         IPL_destroy(meta->ip_list);
+        IPL_destroy(meta->blacklist);
         close(meta->reciever_s);
         close(meta->sender_s);
         free(meta);
@@ -577,16 +590,18 @@ int main(int argc, char* argv[]){
                     if(b!=3) // shift if not the end byte
                         address <<= 8;
                 }
-                if(!IPL_contains(address,meta->blacklist)){
+                char* nick = IPL_contains(address,meta->blacklist);
+                if(!nick){
                     IPL_add(address,&(meta->blacklist),"bad"); // add the ip to master list
                     meta->blacklist_count++;
                 }
+                else
+                    free(nick);
             }
             //reinit socket
             close(meta->sender_s);
             meta->sender_s = init_socket(SPORT);
             // say hello
-            printf("Saying hello...\n");
             request = calloc(1,sizeof(struct message_s));
             request->identifier = HELLO;
             request->size = 1+20; // ident and nick
