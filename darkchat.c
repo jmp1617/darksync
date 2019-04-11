@@ -355,6 +355,7 @@ void* message_reciever_worker(void* arg){
                 close(new_socket);
             }
             else if(message[0]==DISCONNECT){ // disconnect 
+                printf("\n");
                 print_ip(address.sin_addr.s_addr);
                 printf(" (%s) disconnected\n",IPL_contains(address.sin_addr.s_addr,meta->ip_list));
                 IPL_remove(address.sin_addr.s_addr,&(meta->ip_list));
