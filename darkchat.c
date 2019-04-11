@@ -367,7 +367,8 @@ void* message_reciever_worker(void* arg){
                 close(new_socket);
             }
             else if(message[0]==STD_MSG){ // normal message 
-                //TODO
+                printf("\n[%s]: ",IPL_contains(address.sin_addr.s_addr,meta->ip_list));
+                printf("%s",(message+1));
                 close(new_socket);
             }
             else if(message[0]==HELLO){ // new peer
@@ -496,7 +497,24 @@ void* message_sender_worker(void* arg){
         else{ // normal message
             lock(meta);
             if(meta->ip_count > 1){
-
+                Message mes = calloc(1,sizeof(struct message_s));
+                mes->identifier = STD_MSG;
+                mes->size = 1+MAXMSGLEN;
+                mes->message = calloc(MAXMSGLEN,1);
+                memcpy(mes->message,message,MAXMSGLEN);
+                IP_List temp_ip = meta->ip_list->next;
+                for(int ip = 1; ip < meta->ip_count; ip++){
+                    struct sockaddr_in node;
+                    node.sin_family = AF_INET;
+                    node.sin_port = htons(RPORT);
+                    node.sin_addr.s_addr = temp_ip->ip;
+                    while(connect(meta->sender_s, (struct sockaddr *)&node,sizeof(node)) < 0);
+                    send_message(mes, meta->sender_s);
+                    close(meta->sender_s);
+                    meta->sender_s = init_socket(SPORT);
+                    temp_ip=temp_ip->next;
+                }
+                free(mes);
             }
             unlock(meta);
         }

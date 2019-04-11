@@ -68,7 +68,7 @@ typedef struct metadata_s* Metadata;
 
 struct message_s{
     uint8_t identifier;
-    uint8_t size;
+    int size;
     uint8_t* message;
 };
 typedef struct message_s* Message;
