@@ -270,7 +270,7 @@ int send_message(Message m, int socket){
     uint8_t* buffer = calloc(m->size, 1);
     buffer[0] = m->identifier;
     if(m->size > 1)
-        for(int byte = 1; byte <= m->size; byte++){
+        for(int byte = 1; byte < m->size; byte++){
             buffer[byte] = (m->message)[byte-1];
         }
     send(socket , buffer , m->size, 0 );
@@ -498,8 +498,8 @@ int main(int argc, char* argv[]){
         // Load arguments
         Arguments args = calloc(1, sizeof(struct arguments_s));
         args->key = calloc(1,strlen(argv[1])+1);
-        args->node_ip = malloc(20);
-        args->nickname = malloc(20);
+        args->node_ip = calloc(20,1);
+        args->nickname = calloc(20,1);
         strncpy(args->key, argv[1], strlen(argv[1])+1);
         strncpy(args->nickname, argv[3], strlen(argv[3])+1);
         
