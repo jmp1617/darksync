@@ -355,7 +355,9 @@ void* message_reciever_worker(void* arg){
                 close(new_socket);
             }
             else if(message[0]==DISCONNECT){ // disconnect 
-                //TODO
+                print_ip(address.sin_addr.s_addr);
+                printf(" (%s) disconnected\n",IPL_contains(address.sin_addr.s_addr,meta->ip_list));
+                IPL_remove(address.sin_addr.s_addr,&(meta->ip_list));
             }
             else if(message[0]==STD_MSG){ // normal message 
                 //TODO
@@ -427,9 +429,9 @@ void* message_sender_worker(void* arg){
                     bl_message->message[b] |= new_black&0xFF; // set the byte
                     new_black >>= 8; // shift to next
                 }
-                IP_List temp_ip = meta->ip_list;
+                IP_List temp_ip = meta->ip_list->next;
                 printf("Sending new blacklist item...\n");
-                for(int ip; ip < meta->ip_count; ip++){
+                for(int ip=1; ip < meta->ip_count; ip++){
                     // connect to node
                     struct sockaddr_in node;
                     node.sin_family = AF_INET;
@@ -439,7 +441,7 @@ void* message_sender_worker(void* arg){
                     send_message(bl_message, meta->sender_s);
                     close(meta->sender_s);
                     meta->sender_s = init_socket(SPORT);
-                    temp=temp->next;
+                    temp_ip=temp_ip->next;
                 }
                 free(bl_message->message);
                 free(bl_message);
@@ -450,6 +452,26 @@ void* message_sender_worker(void* arg){
             fgets(message,MAXMSGLEN,stdin);
             if(message[0]=='/'&&message[1]=='q'&&message[2]=='\n'){
                 printf("Quitting...\n");
+                // send disconnect
+                Message disconnect = calloc(1,sizeof(struct message_s));
+                disconnect->identifier = DISCONNECT;
+                disconnect->size = 1;
+                lock(meta);
+                IP_List temp_ip = meta->ip_list->next;
+                for(int ip = 1; ip < meta->ip_count; ip++){
+                    struct sockaddr_in node;
+                    node.sin_family = AF_INET;
+                    node.sin_port = htons(RPORT);
+                    node.sin_addr.s_addr = temp_ip->ip;
+                    while(connect(meta->sender_s, (struct sockaddr *)&node,sizeof(node)) < 0);
+                    send_message(disconnect, meta->sender_s);
+                    close(meta->sender_s);
+                    meta->sender_s = init_socket(SPORT);
+                    temp_ip=temp_ip->next;
+                }
+                unlock(meta);
+                free(disconnect);
+                //
                 meta->lock = 2;
                 shutdown(meta->reciever_s,SHUT_RDWR);
             }
