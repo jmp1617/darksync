@@ -464,7 +464,6 @@ void* message_sender_worker(void* arg){
                 printf("Quitting...\n");
                 // send disconnect
                 if(meta->ip_count > 1){
-                    printf("Sending Disconnect...\n");
                     Message disconnect = calloc(1,sizeof(struct message_s));
                     disconnect->identifier = DISCONNECT;
                     disconnect->size = 1;
@@ -486,6 +485,14 @@ void* message_sender_worker(void* arg){
                 }
                 meta->lock = 2;
                 shutdown(meta->reciever_s,SHUT_RDWR);
+            }
+            else if(message[0]=='/'&&message[1]=='l'&&message[2]=='\n'){
+                lock(meta);
+                printf("Connected (%d)\n",meta->ip_count);
+                IPL_print(meta->ip_list);
+                printf("Blacklist (%d)\n",meta->blacklist_count);
+                IPL_print(meta->blacklist);
+                unlock(meta);
             }
             else{ // normal message
 
@@ -659,7 +666,6 @@ int main(int argc, char* argv[]){
         // Print the initial data
         printf("\nActive IP list:\n");
         IPL_print(meta->ip_list);
-        printf("\n");
 
         // Initialize Threads
         pthread_t thread_id_reciever, thread_id_sender;
