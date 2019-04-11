@@ -313,8 +313,9 @@ void* message_reciever_worker(void* arg){
                 for(int c = 1; c <= 20; c++){
                     temp_nick[c-1] = message[c];
                 }
-                IPL_add(address.sin_addr.s_addr,&(meta->ip_list),temp_nick);
-                meta->ip_count++;
+                printf("\n");
+                print_ip(address.sin_addr.s_addr);
+                printf(" (%s) connected\n",temp_nick);
                 Message ip_list_message = calloc(1,sizeof(struct message_s));
                 ip_list_message->identifier = NODE_RES;
                 ip_list_message->size = (meta->ip_count*4)+2+20+1+(meta->blacklist_count*4);
@@ -347,6 +348,9 @@ void* message_reciever_worker(void* arg){
                     offset+=4; // jump forward 4 bytes in the message
                     temp = temp->next; // get the next ip
                 }
+                // Add the new ip
+                IPL_add(address.sin_addr.s_addr,&(meta->ip_list),temp_nick);
+                meta->ip_count++;
                 //
                 unlock(meta);
                 send_message(ip_list_message, new_socket);
@@ -359,9 +363,12 @@ void* message_reciever_worker(void* arg){
                 print_ip(address.sin_addr.s_addr);
                 printf(" (%s) disconnected\n",IPL_contains(address.sin_addr.s_addr,meta->ip_list));
                 IPL_remove(address.sin_addr.s_addr,&(meta->ip_list));
+                meta->ip_count--;
+                close(new_socket);
             }
             else if(message[0]==STD_MSG){ // normal message 
                 //TODO
+                close(new_socket);
             }
             else if(message[0]==HELLO){ // new peer
                 char temp_nick[20] = {0};
@@ -377,6 +384,7 @@ void* message_reciever_worker(void* arg){
                 else
                     free(nick);
                 unlock(meta);
+                close(new_socket);
             }
             else if(message[0]==BL_UPD){ // new ip to blacklist
                 uint32_t address = 0;
@@ -394,6 +402,7 @@ void* message_reciever_worker(void* arg){
                 else
                     free(nick);
                 unlock(meta);
+                close(new_socket);
             }
             else{ // otherwise drop
                 fprintf(stderr,"WARNING: bad message from ");
@@ -414,7 +423,7 @@ void* message_reciever_worker(void* arg){
 void* message_sender_worker(void* arg){
     Metadata meta = (Metadata)arg;
     while(meta->lock!=2){
-        if(meta->ip_count > 0){
+        if(meta->ip_count > 1){
             lock(meta);
             if(meta->emit_black){ // new blacklist item, send it to everyone
                 //grab the most recent addition to the list
@@ -454,25 +463,27 @@ void* message_sender_worker(void* arg){
             if(message[0]=='/'&&message[1]=='q'&&message[2]=='\n'){
                 printf("Quitting...\n");
                 // send disconnect
-                Message disconnect = calloc(1,sizeof(struct message_s));
-                disconnect->identifier = DISCONNECT;
-                disconnect->size = 1;
-                lock(meta);
-                IP_List temp_ip = meta->ip_list->next;
-                for(int ip = 1; ip < meta->ip_count; ip++){
-                    struct sockaddr_in node;
-                    node.sin_family = AF_INET;
-                    node.sin_port = htons(RPORT);
-                    node.sin_addr.s_addr = temp_ip->ip;
-                    while(connect(meta->sender_s, (struct sockaddr *)&node,sizeof(node)) < 0);
-                    send_message(disconnect, meta->sender_s);
-                    close(meta->sender_s);
-                    meta->sender_s = init_socket(SPORT);
-                    temp_ip=temp_ip->next;
+                if(meta->ip_count > 1){
+                    printf("Sending Disconnect...\n");
+                    Message disconnect = calloc(1,sizeof(struct message_s));
+                    disconnect->identifier = DISCONNECT;
+                    disconnect->size = 1;
+                    lock(meta);
+                    IP_List temp_ip = meta->ip_list->next;
+                    for(int ip = 1; ip < meta->ip_count; ip++){
+                        struct sockaddr_in node;
+                        node.sin_family = AF_INET;
+                        node.sin_port = htons(RPORT);
+                        node.sin_addr.s_addr = temp_ip->ip;
+                        while(connect(meta->sender_s, (struct sockaddr *)&node,sizeof(node)) < 0);
+                        send_message(disconnect, meta->sender_s);
+                        close(meta->sender_s);
+                        meta->sender_s = init_socket(SPORT);
+                        temp_ip=temp_ip->next;
+                    }
+                    unlock(meta);
+                    free(disconnect);
                 }
-                unlock(meta);
-                free(disconnect);
-                //
                 meta->lock = 2;
                 shutdown(meta->reciever_s,SHUT_RDWR);
             }
@@ -543,10 +554,7 @@ int main(int argc, char* argv[]){
             strncpy(args->node_ip, argv[2], strlen(argv[2])+1);
             meta->ipassive = 0;
         }
-        if(!meta->ipassive)
-            meta->ip_count = 1;
-        else
-            meta->ip_count = 0;
+        meta->ip_count = 1;
         meta->my_ip = get_ip_of_interface(argv[4]);
         if( !meta->my_ip ){
             fprintf(stderr,"%s is not a valid interface.\n",argv[4]);
