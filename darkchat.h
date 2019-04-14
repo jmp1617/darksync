@@ -50,6 +50,19 @@ void IPL_destroy(IP_List root);
 char* IPL_contains(uint32_t ip, IP_List root);
 int IPL_remove(uint32_t ip, IP_List* root);
 
+// Message List
+struct message_list_s{
+    char message[MAXMSGLEN];
+    char nick[20];
+    uint8_t time;
+    struct message_queue_s* next;
+};
+typedef struct message_list_s* MSG_List;
+
+void MSG_add(char* message, char* nick, uint8_t time, MSG_List messages);
+void MSG_destroy(MSG_List messages);
+void MSG_display(MSG_List messages);
+
 // Metadata 
 struct metadata_s{
     int ip_count;
@@ -60,6 +73,7 @@ struct metadata_s{
     char nick[20];
     IP_List ip_list;
     IP_List blacklist;
+    MSG_List messages;
     unsigned int lock: 2;
     unsigned int ipassive: 1;
     unsigned int emit_black: 1;

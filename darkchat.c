@@ -79,6 +79,20 @@ int IPL_remove(uint32_t ip, IP_List* root){
     }
 }
 
+// Message List
+
+void MSG_add(char* message, char* nick, uint8_t time, MSG_List messages){
+
+}
+
+void MSG_destroy(MSG_List messages){
+
+}
+
+void MSG_display(MSG_List messages){
+
+}
+
 // Aux
 uint32_t conv_ip(char* ip){
     uint32_t result=0;
@@ -570,6 +584,9 @@ int main(int argc, char* argv[]){
         // Initialize Metadata
         Metadata meta = calloc(1,sizeof(struct metadata_s));
         memcpy(meta->nick,args->nickname,20);
+        meta->ip_list = NULL;
+        meta->blacklist = NULL;
+        meta->messages = NULL;
         meta->emit_black = 0;
         meta->blacklist_count = 0;
         load_blacklist(&meta->blacklist, meta);
