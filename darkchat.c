@@ -81,16 +81,46 @@ int IPL_remove(uint32_t ip, IP_List* root){
 
 // Message List
 
-void MSG_add(char* message, char* nick, uint8_t time, MSG_List messages){
-
+void MSG_add(char* message, char* nick, uint32_t time, MSG_List* messages){
+    if(!(*messages)){
+        (*messages) = calloc(1,sizeof(struct message_list_s));
+        memcpy((*messages)->message, message, MAXMSGLEN);
+        memcpy((*messages)->nick, nick, 20);
+        (*messages)->time = time;
+        (*messages)->next = NULL;
+    }
+    else{
+        MSG_List temp = *messages;
+        while(temp->next)
+            temp = temp->next;
+        temp->next = calloc(1,sizeof(struct message_list_s));
+        memcpy(temp->next->message, message, MAXMSGLEN);
+        memcpy(temp->next->nick, nick, 20);
+        temp->next->time = time;
+        temp->next->next = NULL;
+    }
 }
 
 void MSG_destroy(MSG_List messages){
-
+    if(messages){
+        if(messages->next)
+            MSG_destroy(messages->next);
+        free(messages);
+    }
 }
 
 void MSG_display(MSG_List messages){
+    if(messages){
+        if(messages->next)
+            MSG_display(messages->next);
+        printf("[%s @ ",messages->nick);
+        print_time(messages->time);
+        printf("]: %s",messages->message);
+    }
+}
 
+void print_time(uint32_t time){
+    printf("%x",time);
 }
 
 // Aux
@@ -555,6 +585,7 @@ void destructor(Arguments args, Metadata meta){
         free(args);
     }
     if(meta){
+        MSG_destroy(meta->messages);
         IPL_destroy(meta->ip_list);
         IPL_destroy(meta->blacklist);
         close(meta->reciever_s);
