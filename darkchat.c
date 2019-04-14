@@ -413,6 +413,8 @@ void* message_reciever_worker(void* arg){
             else if(message[0]==STD_MSG){ // normal message 
                 printf("\n[%s]: ",IPL_contains(address.sin_addr.s_addr,meta->ip_list));
                 printf("%s",(message+1));
+                uint32_t t = (uint32_t)*(message+1+MAXMSGLEN);
+                printf("%04x\n",t);
                 close(new_socket);
             }
             else if(message[0]==HELLO){ // new peer
@@ -540,12 +542,15 @@ void* message_sender_worker(void* arg){
         }
         else{ // normal message
             lock(meta);
+            uint32_t t = (uint32_t)time(NULL);
+            printf("%04x\n",t);
             if(meta->ip_count > 1){
                 Message mes = calloc(1,sizeof(struct message_s));
                 mes->identifier = STD_MSG;
-                mes->size = 1+MAXMSGLEN;
-                mes->message = calloc(MAXMSGLEN,1);
+                mes->size = 1+MAXMSGLEN+4;
+                mes->message = calloc(MAXMSGLEN+4,1);
                 memcpy(mes->message,message,MAXMSGLEN);
+                memcpy((mes->message)+MAXMSGLEN, &t, 4);
                 IP_List temp_ip = meta->ip_list->next;
                 for(int ip = 1; ip < meta->ip_count; ip++){
                     struct sockaddr_in node;
