@@ -111,14 +111,14 @@ void MSG_destroy(MSG_List messages){
 
 void MSG_display(MSG_List messages){
     if(messages){
-        if(messages->next)
-            MSG_display(messages->next);
         printf("[%s @ ",messages->nick);
         uint32_t* temp_time = calloc(4,1);
         memcpy(temp_time,&(messages->time),4);
         print_time(temp_time);
         free(temp_time);
         printf("]: %s",messages->message);
+        if(messages->next)
+            MSG_display(messages->next);
     }
 }
 
@@ -362,9 +362,15 @@ void* message_reciever_worker(void* arg){
                 for(int c = 1; c <= 20; c++){
                     temp_nick[c-1] = message[c];
                 }
-                printf("\n");
-                print_ip(address.sin_addr.s_addr);
-                printf(" (%s) connected\n",temp_nick);
+                //add message
+                char* conn = calloc(100,1);
+                strcat(conn,inet_ntoa(address.sin_addr));
+                strcat(conn," (");
+                strcat(conn,temp_nick);
+                strcat(conn,") connected.\n\0");
+                MSG_add(conn, "~", time(NULL), &(meta->messages));
+                free(conn);
+                //TODO refresh display
                 Message ip_list_message = calloc(1,sizeof(struct message_s));
                 ip_list_message->identifier = NODE_RES;
                 ip_list_message->size = (meta->ip_count*4)+2+20+1+(meta->blacklist_count*4);
@@ -408,9 +414,16 @@ void* message_reciever_worker(void* arg){
                 close(new_socket);
             }
             else if(message[0]==DISCONNECT){ // disconnect 
-                printf("\n");
-                print_ip(address.sin_addr.s_addr);
-                printf(" (%s) disconnected\n",IPL_contains(address.sin_addr.s_addr,meta->ip_list));
+                char* conn = calloc(100,1);
+                char* temp_nick = IPL_contains(address.sin_addr.s_addr,meta->ip_list);
+                strcat(conn,inet_ntoa(address.sin_addr));
+                strcat(conn," (");
+                strcat(conn,temp_nick);
+                strcat(conn,") disconnected.\n\0");
+                MSG_add(conn, "~", time(NULL), &(meta->messages));
+                free(conn);
+                free(temp_nick);
+                //TODO refresh display
                 IPL_remove(address.sin_addr.s_addr,&(meta->ip_list));
                 meta->ip_count--;
                 close(new_socket);
@@ -462,10 +475,14 @@ void* message_reciever_worker(void* arg){
                 close(new_socket);
             }
             else{ // otherwise drop
-                fprintf(stderr,"WARNING: bad message from ");
-                print_ip(address.sin_addr.s_addr);
-                fprintf(stderr,". Dropping and blacklisting.\n");
                 lock(meta);
+                char* bad = calloc(100,1);
+                strcat(bad, "WARNING: bad message from ");
+                strcat(bad, inet_ntoa(address.sin_addr));
+                strcat(bad, ". Dropping and blacklisting.\n\0");
+                MSG_add(bad, "~", time(NULL), &(meta->messages));
+                free(bad);
+                //TODO screen refresh
                 IPL_add(address.sin_addr.s_addr,&(meta->blacklist),"bad");
                 meta->blacklist_count++;
                 meta->emit_black = 1;
@@ -497,7 +514,6 @@ void* message_sender_worker(void* arg){
                 new_black >>= 8; // shift to next
             }
             IP_List temp_ip = meta->ip_list->next;
-            printf("Sending new blacklist item...\n");
             for(int ip=1; ip < meta->ip_count; ip++){
                 // connect to node
                 struct sockaddr_in node;
@@ -658,19 +674,11 @@ int main(int argc, char* argv[]){
             exit(EXIT_FAILURE);
         }
         IPL_add(meta->my_ip,&(meta->ip_list),meta->nick); //initial list only contains yourself
-        printf("Welcome, %s\nReciever service binding to ",args->nickname);
-        print_ip(meta->my_ip);
-        printf(":%d\nSender service binding to ",RPORT);
-        print_ip(meta->my_ip);
-        printf(":%d\n",SPORT);
-        
         meta->reciever_s = init_socket(RPORT);
         meta->sender_s = init_socket(SPORT);
-        printf("Socket Initialized\n"); 
         
         // ask for the itial nodes ip list 
         if(!meta->ipassive){
-            printf("\nAsking %s for active ip list...\n",args->node_ip);
             // create the message;
             Message request = calloc(1,sizeof(struct message_s));
             request->identifier = ACTIVE_NODES_REQ;
@@ -691,7 +699,6 @@ int main(int argc, char* argv[]){
             free(request);
             uint8_t buffer[(MAXCONN*4)+2+20]={0};
             read(meta->sender_s, buffer, MAXCONN*4);
-            printf("List recieved from %s.\n",args->node_ip);
             uint8_t size = buffer[1];
             //extract nickname
             char temp_nick[20] = {0};
@@ -752,10 +759,6 @@ int main(int argc, char* argv[]){
             free(request->message);
             free(request);
         }
-
-        // Print the initial data
-        printf("\nActive IP list:\n");
-        IPL_print(meta->ip_list);
 
         // Initialize Threads
         pthread_t thread_id_reciever, thread_id_sender;
