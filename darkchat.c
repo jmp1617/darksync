@@ -114,13 +114,18 @@ void MSG_display(MSG_List messages){
         if(messages->next)
             MSG_display(messages->next);
         printf("[%s @ ",messages->nick);
-        print_time(messages->time);
+        uint32_t* temp_time = calloc(4,1);
+        memcpy(temp_time,&(messages->time),4);
+        print_time(temp_time);
+        free(temp_time);
         printf("]: %s",messages->message);
     }
 }
 
-void print_time(uint32_t time){
-    printf("%x",time);
+void print_time(uint32_t* time){
+    struct tm* t;
+    t = localtime((time_t*)time);
+    printf("%02d:%02d", t->tm_hour,t->tm_min);
 }
 
 // Aux
@@ -348,7 +353,7 @@ void* message_reciever_worker(void* arg){
             free(nick);
         }
         else{
-            uint8_t message[1024] = {0};
+            uint8_t* message = calloc(1024,1);
             read(new_socket , message, 1024); 
             if(message[0]==ACTIVE_NODES_REQ){ // node list request
                 lock(meta);
@@ -411,10 +416,15 @@ void* message_reciever_worker(void* arg){
                 close(new_socket);
             }
             else if(message[0]==STD_MSG){ // normal message 
-                printf("\n[%s]: ",IPL_contains(address.sin_addr.s_addr,meta->ip_list));
-                printf("%s",(message+1));
-                uint32_t t = (uint32_t)*(message+1+MAXMSGLEN);
-                printf("%04x\n",t);
+                uint32_t t = 0;
+                for(int b = 3; b>=0; b--){
+                    t |= message[1+MAXMSGLEN+b];
+                    if(b!=0)
+                        t<<=8;
+                }
+                char* nick = IPL_contains(address.sin_addr.s_addr,meta->ip_list); 
+                MSG_add((char*)(message+1),nick,t,&(meta->messages));
+                free(nick);
                 close(new_socket);
             }
             else if(message[0]==HELLO){ // new peer
@@ -435,9 +445,9 @@ void* message_reciever_worker(void* arg){
             }
             else if(message[0]==BL_UPD){ // new ip to blacklist
                 uint32_t address = 0;
-                for(int b = 0; b < 4; b++){ // each byte in address
+                for(int b = 3; b>=0; b--){ // each byte in address
                     address |= message[1+b]; // get the byte
-                    if(b!=3) // shift if not the end byte
+                    if(b!=0) // shift if not the end byte
                         address <<= 8;
                 }
                 lock(meta);
@@ -462,6 +472,7 @@ void* message_reciever_worker(void* arg){
                 unlock(meta);
                 close(new_socket);    
             }
+            free(message);
         }
     }
     return 0;
@@ -504,7 +515,7 @@ void* message_sender_worker(void* arg){
         }
         unlock(meta);
         printf("> ");
-        char message[MAXMSGLEN] = {0};
+        char* message = calloc(MAXMSGLEN, 1);
         fgets(message,MAXMSGLEN,stdin);
         if(message[0]=='/'&&message[1]=='q'&&message[2]=='\n'){
             printf("Quitting...\n");
@@ -543,7 +554,6 @@ void* message_sender_worker(void* arg){
         else{ // normal message
             lock(meta);
             uint32_t t = (uint32_t)time(NULL);
-            printf("%04x\n",t);
             if(meta->ip_count > 1){
                 Message mes = calloc(1,sizeof(struct message_s));
                 mes->identifier = STD_MSG;
@@ -551,6 +561,11 @@ void* message_sender_worker(void* arg){
                 mes->message = calloc(MAXMSGLEN+4,1);
                 memcpy(mes->message,message,MAXMSGLEN);
                 memcpy((mes->message)+MAXMSGLEN, &t, 4);
+                // add message to messages
+                char* temp_nick = calloc(20,1);
+                memcpy(temp_nick, meta->nick, 20);
+                MSG_add(message, temp_nick, t, &(meta->messages));
+                free(temp_nick);
                 IP_List temp_ip = meta->ip_list->next;
                 for(int ip = 1; ip < meta->ip_count; ip++){
                     struct sockaddr_in node;
@@ -565,8 +580,10 @@ void* message_sender_worker(void* arg){
                 }
                 free(mes);
             }
+            MSG_display(meta->messages);
             unlock(meta);
         }
+        free(message);
     }
     return 0;
 }

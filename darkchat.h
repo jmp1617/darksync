@@ -63,7 +63,7 @@ typedef struct message_list_s* MSG_List;
 void MSG_add(char* message, char* nick, uint32_t time, MSG_List* messages);
 void MSG_destroy(MSG_List messages);
 void MSG_display(MSG_List messages);
-void print_time(uint32_t time);
+void print_time(uint32_t* time);
 
 // Metadata 
 struct metadata_s{
