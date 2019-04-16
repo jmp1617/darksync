@@ -175,8 +175,17 @@ uint32_t conv_ip(char* ip){
 void display(Metadata meta){
     int h, w;
     getmaxyx(stdscr, h, w);//print header
-    addstr("Darkchat\n");
+    printw("\n");
+    addstr("     ___           __       __        __ ");
+    printw(" | Status: %d\n",meta->ip_count);
+    addstr("    / _ \\___ _____/ /______/ /  ___ _/ /_");
+    printw(" | Name: %s\n",meta->nick);
+    addstr("   / // / _ `/ __/  '_/ __/ _ \\/ _ `/ __/");
+    printw(" | IP: %08x\n",meta->my_ip);
+    addstr("  /____/\\_,_/_/ /_/\\_\\\\__/_//_/\\_,_/\\__/ ");
+    printw(" | Port: %d\n",RPORT);
     hline(ACS_HLINE, w);
+    border(0,0,0,0,0,0,0,0);
 
 
     //refresh
