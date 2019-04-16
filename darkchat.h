@@ -14,6 +14,7 @@
 #include <net/if.h>
 #include <pthread.h>
 #include <time.h>
+#include <ncurses.h>
 
 #define RPORT 8686
 #define SPORT 8687
@@ -88,6 +89,9 @@ struct message_s{
     uint8_t* message;
 };
 typedef struct message_s* Message;
+
+//------- display
+void display(Metadata meta);
 
 //------- blacklist
 void load_blacklist(IP_List* root, Metadata meta);

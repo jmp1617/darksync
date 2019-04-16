@@ -171,6 +171,18 @@ uint32_t conv_ip(char* ip){
     return result;
 }
 
+// Display
+void display(Metadata meta){
+    int h, w;
+    getmaxyx(stdscr, h, w);//print header
+    addstr("Darkchat\n");
+    hline(ACS_HLINE, w);
+
+
+    //refresh
+    refresh();
+}
+
 // Blacklist
 void load_blacklist(IP_List* root, Metadata meta){
     char path[1024] = {0};
@@ -530,7 +542,6 @@ void* message_sender_worker(void* arg){
             free(bl_message);
         }
         unlock(meta);
-        printf("> ");
         char* message = calloc(MAXMSGLEN, 1);
         fgets(message,MAXMSGLEN,stdin);
         if(message[0]=='/'&&message[1]=='q'&&message[2]=='\n'){
@@ -676,7 +687,11 @@ int main(int argc, char* argv[]){
         IPL_add(meta->my_ip,&(meta->ip_list),meta->nick); //initial list only contains yourself
         meta->reciever_s = init_socket(RPORT);
         meta->sender_s = init_socket(SPORT);
-        
+
+        // Screen
+        initscr();
+        refresh();
+
         // ask for the itial nodes ip list 
         if(!meta->ipassive){
             // create the message;
@@ -760,6 +775,9 @@ int main(int argc, char* argv[]){
             free(request);
         }
 
+        // Initial display
+        display(meta);
+
         // Initialize Threads
         pthread_t thread_id_reciever, thread_id_sender;
         void* thread_ret;
@@ -773,6 +791,7 @@ int main(int argc, char* argv[]){
             dump_blacklist(meta->blacklist);
         // Free the malloc
         destructor(args,meta);
+        endwin();
     }
     return 0;
 }
