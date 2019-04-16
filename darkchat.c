@@ -192,11 +192,10 @@ void display(Metadata meta){
     wprintw(w,"                         /___/");
     wprintw(w,"            | Send Port: %d\n",SPORT);
     whline(w,ACS_HLINE, wid);
+    wmove(w,h-6,0);
+    whline(w,ACS_HLINE, wid);
+    wmove(w,6,0);
     wborder(w,0,0,0,0,0,0,0,0);
-
-
-
-
     
     //refresh
     wrefresh(w);
@@ -712,6 +711,8 @@ int main(int argc, char* argv[]){
         refresh();
         int h, w;
         getmaxyx(stdscr, h, w);//print header
+        if( w<=70 )
+            w = 70;
         meta->win = newwin(h, w, 0, 0);
 
         // ask for the itial nodes ip list 
