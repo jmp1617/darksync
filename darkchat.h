@@ -80,6 +80,7 @@ struct metadata_s{
     unsigned int lock: 2;
     unsigned int ipassive: 1;
     unsigned int emit_black: 1;
+    WINDOW* win;
 };
 typedef struct metadata_s* Metadata;
 

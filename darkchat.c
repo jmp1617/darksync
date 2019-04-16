@@ -173,23 +173,33 @@ uint32_t conv_ip(char* ip){
 
 // Display
 void display(Metadata meta){
-    int h, w;
-    getmaxyx(stdscr, h, w);//print header
-    printw("\n");
-    addstr("     ___           __       __        __ ");
-    printw(" | Status: %d\n",meta->ip_count);
-    addstr("    / _ \\___ _____/ /______/ /  ___ _/ /_");
-    printw(" | Name: %s\n",meta->nick);
-    addstr("   / // / _ `/ __/  '_/ __/ _ \\/ _ `/ __/");
-    printw(" | IP: %08x\n",meta->my_ip);
-    addstr("  /____/\\_,_/_/ /_/\\_\\\\__/_//_/\\_,_/\\__/ ");
-    printw(" | Port: %d\n",RPORT);
-    hline(ACS_HLINE, w);
-    border(0,0,0,0,0,0,0,0);
+    WINDOW* w = meta->win;
+    int h, wid;
+    getmaxyx(stdscr, h, wid);//print header
+    wprintw(w,"\n");
+    wprintw(w,"     ___           __");
+    wprintw(w,"                     | Connections: %d\n",meta->ip_count-1);
+    wprintw(w,"    / _ \\___ _____/ /__ _____ _____  ____");
+    wprintw(w," | Name: %s\n",meta->nick);
+    wprintw(w,"   / // / _ `/ __/  '_/(_-< // / _ \\/ __/");
+    wprintw(w," | IP: ");
+    uint8_t octet[4];
+    for(int i = 0 ; i < 4 ; i++)
+        octet[i] = meta->my_ip >> (i * 8);
+    wprintw(w,"%d.%d.%d.%d\n",octet[0],octet[1],octet[2],octet[3]);
+    wprintw(w,"  /____/\\_,_/_/ /_/\\_\\/___|_, /_//_/\\__/");
+    wprintw(w,"  | Recieve Port: %d\n",RPORT);
+    wprintw(w,"                         /___/");
+    wprintw(w,"            | Send Port: %d\n",SPORT);
+    whline(w,ACS_HLINE, wid);
+    wborder(w,0,0,0,0,0,0,0,0);
 
 
+
+
+    
     //refresh
-    refresh();
+    wrefresh(w);
 }
 
 // Blacklist
@@ -700,6 +710,9 @@ int main(int argc, char* argv[]){
         // Screen
         initscr();
         refresh();
+        int h, w;
+        getmaxyx(stdscr, h, w);//print header
+        meta->win = newwin(h, w, 0, 0);
 
         // ask for the itial nodes ip list 
         if(!meta->ipassive){
