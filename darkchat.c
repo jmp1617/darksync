@@ -192,9 +192,11 @@ void display(Metadata meta){
     wprintw(w,"                         /___/");
     wprintw(w,"            | Send Port: %d\n",SPORT);
     whline(w,ACS_HLINE, wid);
-    wmove(w,h-6,0);
+    wmove(w,h-3,0);
     whline(w,ACS_HLINE, wid);
-    wmove(w,6,0);
+    wmove(w,h-1,2);
+    waddch(w,ACS_RARROW);
+    wmove(w,7,0);
     wborder(w,0,0,0,0,0,0,0,0);
     
     //refresh
@@ -400,7 +402,7 @@ void* message_reciever_worker(void* arg){
                 strcat(conn,") connected.\n\0");
                 MSG_add(conn, "~", time(NULL), &(meta->messages));
                 free(conn);
-                //TODO refresh display
+                //todo refresh display
                 Message ip_list_message = calloc(1,sizeof(struct message_s));
                 ip_list_message->identifier = NODE_RES;
                 ip_list_message->size = (meta->ip_count*4)+2+20+1+(meta->blacklist_count*4);
