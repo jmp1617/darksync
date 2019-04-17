@@ -86,6 +86,7 @@ struct metadata_s{
     WINDOW* messenger;
     WINDOW* banner;
     WINDOW* status;
+    WINDOW* message_sender;
 };
 typedef struct metadata_s* Metadata;
 

@@ -184,6 +184,7 @@ void display(Metadata meta){
     WINDOW* s = meta->messenger;
     WINDOW* b = meta->banner;
     WINDOW* st = meta->status;
+    WINDOW* ms = meta->message_sender;
     // banner
     wprintw(b,"\n");
     waddstr(b,"     ___           __\n");
@@ -213,9 +214,8 @@ void display(Metadata meta){
     // messenger
     wmove(s,1,2);
     waddch(s,'>');
-    wmove(s,1,4);
     // get the input
-
+    wmove(ms,0,0);
     // refresh
     wrefresh(w);
     wrefresh(mb);
@@ -231,7 +231,7 @@ void display_mb(MSG_List messages, WINDOW* mb){
         memcpy(temp_time,&(messages->time),4);
         wprint_time(mb,temp_time);
         free(temp_time);
-        wprintw(mb,"]: %s",messages->message);
+        wprintw(mb,"]: %s\n",messages->message);
         if(messages->next)
             display_mb(messages->next,mb);
     }
@@ -433,7 +433,7 @@ void* message_reciever_worker(void* arg){
                 strcat(conn,inet_ntoa(address.sin_addr));
                 strcat(conn," (");
                 strcat(conn,temp_nick);
-                strcat(conn,") connected.\n\0");
+                strcat(conn,") connected.\0");
                 MSG_add(conn, "~", time(NULL), &(meta->messages));
                 free(conn);
                 meta->ip_count = 2;
@@ -487,7 +487,7 @@ void* message_reciever_worker(void* arg){
                 strcat(conn,inet_ntoa(address.sin_addr));
                 strcat(conn," (");
                 strcat(conn,temp_nick);
-                strcat(conn,") disconnected.\n\0");
+                strcat(conn,") disconnected.\0");
                 MSG_add(conn, "~", time(NULL), &(meta->messages));
                 free(conn);
                 free(temp_nick);
@@ -548,7 +548,7 @@ void* message_reciever_worker(void* arg){
                 char* bad = calloc(100,1);
                 strcat(bad, "WARNING: bad message from ");
                 strcat(bad, inet_ntoa(address.sin_addr));
-                strcat(bad, ". Dropping and blacklisting.\n\0");
+                strcat(bad, ". Dropping and blacklisting.\0");
                 MSG_add(bad, "~", time(NULL), &(meta->messages));
                 free(bad);
                 display(meta);
@@ -600,9 +600,8 @@ void* message_sender_worker(void* arg){
         }
         unlock(meta);
         char* message = calloc(MAXMSGLEN, 1);
-        fgets(message,MAXMSGLEN,stdin);
-        if(message[0]=='/'&&message[1]=='q'&&message[2]=='\n'){
-            printf("Quitting...\n");
+        wgetnstr(meta->message_sender,message,MAXMSGLEN-1);
+        if(message[0]=='/'&&message[1]=='q'&&message[2]=='\0'){
             // send disconnect
             lock(meta);
             if(meta->ip_count > 1){
@@ -623,16 +622,18 @@ void* message_sender_worker(void* arg){
                 }
                 free(disconnect);
             }
+            display(meta);
             unlock(meta);
             meta->lock = 2;
             shutdown(meta->reciever_s,SHUT_RDWR);
         }
-        else if(message[0]=='/'&&message[1]=='l'&&message[2]=='\n'){
+        else if(message[0]=='/'&&message[1]=='l'&&message[2]=='\0'){
             lock(meta);
             printf("Connected (%d)\n",meta->ip_count);
             IPL_print(meta->ip_list);
             printf("Blacklist (%d)\n",meta->blacklist_count);
             IPL_print(meta->blacklist);
+            display(meta);
             unlock(meta);
         }
         else{ // normal message
@@ -664,7 +665,7 @@ void* message_sender_worker(void* arg){
                 }
                 free(mes);
             }
-            MSG_display(meta->messages);
+            display(meta);
             unlock(meta);
         }
         free(message);
@@ -753,9 +754,11 @@ int main(int argc, char* argv[]){
         if( w<=70 )
             w = 70;
         meta->win = newwin(h, w, 0, 0);
-        meta->message_board = newwin(h-10,w-4,7,2);
-        meta->messenger = newwin(3,w,h-3,0);
+        meta->message_board = newwin(h-12,w-4,7,2);
+        meta->messenger = newwin(5,w,h-5,0);
+        meta->message_sender = newwin(3,w-6,h-4,4);
         scrollok(meta->message_board, TRUE);
+        scrollok(meta->message_sender, TRUE);
         meta->banner = newwin(7,w,0,0);
         meta->status = newwin(7,30,0,w-30);
 
