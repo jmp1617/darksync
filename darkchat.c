@@ -128,6 +128,12 @@ void print_time(uint32_t* time){
     printf("%02d:%02d", t->tm_hour,t->tm_min);
 }
 
+void wprint_time(WINDOW* w, uint32_t* time){
+    struct tm* t;
+    t = localtime((time_t*)time);
+    wprintw(w,"%02d:%02d", t->tm_hour,t->tm_min);
+}
+
 // Aux
 uint32_t conv_ip(char* ip){
     uint32_t result=0;
@@ -174,33 +180,61 @@ uint32_t conv_ip(char* ip){
 // Display
 void display(Metadata meta){
     WINDOW* w = meta->win;
-    int h, wid;
-    getmaxyx(stdscr, h, wid);//print header
-    wprintw(w,"\n");
-    wprintw(w,"     ___           __");
-    wprintw(w,"                     | Connections: %d\n",meta->ip_count-1);
-    wprintw(w,"    / _ \\___ _____/ /__ _____ _____  ____");
-    wprintw(w," | Name: %s\n",meta->nick);
-    wprintw(w,"   / // / _ `/ __/  '_/(_-< // / _ \\/ __/");
-    wprintw(w," | IP: ");
+    WINDOW* mb = meta->message_board;
+    WINDOW* s = meta->messenger;
+    WINDOW* b = meta->banner;
+    WINDOW* st = meta->status;
+    // banner
+    wprintw(b,"\n");
+    waddstr(b,"     ___           __\n");
+    waddstr(b,"    / _ \\___ _____/ /__ _____ _____  ____\n");
+    waddstr(b,"   / // / _ `/ __/  '_/(_-< // / _ \\/ __/\n");
+    waddstr(b,"  /____/\\_,_/_/ /_/\\_\\/___|_, /_//_/\\__/\n");
+    waddstr(b,"                         /___/\n");
+    // status
+    wmove(st,1,0);
+    wprintw(st," Connections: %d\n",meta->ip_count-1);
+    wprintw(st," Name: %s\n",meta->nick);
+    wprintw(st," IP: ");
     uint8_t octet[4];
     for(int i = 0 ; i < 4 ; i++)
         octet[i] = meta->my_ip >> (i * 8);
-    wprintw(w,"%d.%d.%d.%d\n",octet[0],octet[1],octet[2],octet[3]);
-    wprintw(w,"  /____/\\_,_/_/ /_/\\_\\/___|_, /_//_/\\__/");
-    wprintw(w,"  | Recieve Port: %d\n",RPORT);
-    wprintw(w,"                         /___/");
-    wprintw(w,"            | Send Port: %d\n",SPORT);
-    whline(w,ACS_HLINE, wid);
-    wmove(w,h-3,0);
-    whline(w,ACS_HLINE, wid);
-    wmove(w,h-1,2);
-    waddch(w,ACS_RARROW);
-    wmove(w,7,0);
+    wprintw(st,"%d.%d.%d.%d\n",octet[0],octet[1],octet[2],octet[3]);
+    wprintw(st," Recieve Port: %d\n",RPORT);
+    wprintw(st," Send Port: %d\n",SPORT);
+    // borders
     wborder(w,0,0,0,0,0,0,0,0);
-    
-    //refresh
+    wborder(st,0,0,0,0,ACS_TTEE,0,ACS_BTEE,ACS_RTEE);
+    wborder(b,0,0,0,0,0,0,ACS_LTEE,0);
+    wborder(s,0,0,0,0,ACS_LTEE,ACS_RTEE,0,0);
+    // message board
+    wmove(mb,0,0);
+    display_mb(meta->messages,mb);
+    // messenger
+    wmove(s,1,2);
+    waddch(s,'>');
+    wmove(s,1,4);
+    // get the input
+
+    // refresh
     wrefresh(w);
+    wrefresh(mb);
+    wrefresh(b);
+    wrefresh(st);
+    wrefresh(s);
+}
+
+void display_mb(MSG_List messages, WINDOW* mb){
+    if(messages){
+        wprintw(mb,"[%s @ ",messages->nick);
+        uint32_t* temp_time = calloc(4,1);
+        memcpy(temp_time,&(messages->time),4);
+        wprint_time(mb,temp_time);
+        free(temp_time);
+        wprintw(mb,"]: %s",messages->message);
+        if(messages->next)
+            display_mb(messages->next,mb);
+    }
 }
 
 // Blacklist
@@ -402,7 +436,9 @@ void* message_reciever_worker(void* arg){
                 strcat(conn,") connected.\n\0");
                 MSG_add(conn, "~", time(NULL), &(meta->messages));
                 free(conn);
-                //todo refresh display
+                meta->ip_count = 2;
+                display(meta);
+                meta->ip_count = 1;
                 Message ip_list_message = calloc(1,sizeof(struct message_s));
                 ip_list_message->identifier = NODE_RES;
                 ip_list_message->size = (meta->ip_count*4)+2+20+1+(meta->blacklist_count*4);
@@ -455,9 +491,9 @@ void* message_reciever_worker(void* arg){
                 MSG_add(conn, "~", time(NULL), &(meta->messages));
                 free(conn);
                 free(temp_nick);
-                //TODO refresh display
                 IPL_remove(address.sin_addr.s_addr,&(meta->ip_list));
                 meta->ip_count--;
+                display(meta);
                 close(new_socket);
             }
             else if(message[0]==STD_MSG){ // normal message 
@@ -470,6 +506,7 @@ void* message_reciever_worker(void* arg){
                 char* nick = IPL_contains(address.sin_addr.s_addr,meta->ip_list); 
                 MSG_add((char*)(message+1),nick,t,&(meta->messages));
                 free(nick);
+                display(meta);
                 close(new_socket);
             }
             else if(message[0]==HELLO){ // new peer
@@ -514,7 +551,7 @@ void* message_reciever_worker(void* arg){
                 strcat(bad, ". Dropping and blacklisting.\n\0");
                 MSG_add(bad, "~", time(NULL), &(meta->messages));
                 free(bad);
-                //TODO screen refresh
+                display(meta);
                 IPL_add(address.sin_addr.s_addr,&(meta->blacklist),"bad");
                 meta->blacklist_count++;
                 meta->emit_black = 1;
@@ -710,12 +747,19 @@ int main(int argc, char* argv[]){
 
         // Screen
         initscr();
-        refresh();
+        start_color();
         int h, w;
         getmaxyx(stdscr, h, w);//print header
         if( w<=70 )
             w = 70;
         meta->win = newwin(h, w, 0, 0);
+        meta->message_board = newwin(h-10,w-4,7,2);
+        meta->messenger = newwin(3,w,h-3,0);
+        scrollok(meta->message_board, TRUE);
+        meta->banner = newwin(7,w,0,0);
+        meta->status = newwin(7,30,0,w-30);
+
+        display(meta);
 
         // ask for the itial nodes ip list 
         if(!meta->ipassive){

@@ -65,6 +65,7 @@ void MSG_add(char* message, char* nick, uint32_t time, MSG_List* messages);
 void MSG_destroy(MSG_List messages);
 void MSG_display(MSG_List messages);
 void print_time(uint32_t* time);
+void wprint_time(WINDOW* w, uint32_t* time);
 
 // Metadata 
 struct metadata_s{
@@ -81,6 +82,10 @@ struct metadata_s{
     unsigned int ipassive: 1;
     unsigned int emit_black: 1;
     WINDOW* win;
+    WINDOW* message_board;
+    WINDOW* messenger;
+    WINDOW* banner;
+    WINDOW* status;
 };
 typedef struct metadata_s* Metadata;
 
@@ -93,6 +98,7 @@ typedef struct message_s* Message;
 
 //------- display
 void display(Metadata meta);
+void display_mb(MSG_List messages, WINDOW* mb);
 
 //------- blacklist
 void load_blacklist(IP_List* root, Metadata meta);
