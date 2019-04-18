@@ -629,10 +629,17 @@ void* message_sender_worker(void* arg){
         }
         else if(message[0]=='/'&&message[1]=='l'&&message[2]=='\0'){
             lock(meta);
-            printf("Connected (%d)\n",meta->ip_count);
-            IPL_print(meta->ip_list);
-            printf("Blacklist (%d)\n",meta->blacklist_count);
-            IPL_print(meta->blacklist);
+            char* mes = calloc(30+(20*(meta->ip_count)),1);
+            strcat(mes,"Connected:\n");
+            IP_List temp = meta->ip_list;
+            while(temp){
+                strcat(mes,"\t     ");
+                strcat(mes,temp->nick);
+                if(temp->next)
+                    strcat(mes,"\n");
+                temp = temp->next;
+            }
+            MSG_add(mes,"~",time(NULL),&meta->messages);
             display(meta);
             unlock(meta);
         }
@@ -748,7 +755,6 @@ int main(int argc, char* argv[]){
 
         // Screen
         initscr();
-        start_color();
         int h, w;
         getmaxyx(stdscr, h, w);//print header
         if( w<=70 )
