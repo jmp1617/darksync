@@ -16,6 +16,8 @@
 #include <time.h>
 #include <ncurses.h>
 
+#include "aes.h"
+
 #define RPORT 8686
 #define SPORT 8687
 #define MAXCONN 50
