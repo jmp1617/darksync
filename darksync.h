@@ -15,6 +15,7 @@
 #include <pthread.h>
 #include <time.h>
 #include <ncurses.h>
+#include <sys/random.h>
 
 #include "aes.h"
 
@@ -83,6 +84,7 @@ struct metadata_s{
     unsigned int lock: 2;
     unsigned int ipassive: 1;
     unsigned int emit_black: 1;
+    uint8_t key[64];
     WINDOW* win;
     WINDOW* message_board;
     WINDOW* messenger;
@@ -98,6 +100,10 @@ struct message_s{
     uint8_t* message;
 };
 typedef struct message_s* Message;
+
+//------- encryption
+void generate_key_256();
+void load_key(char* key, Metadata meta);
 
 //------- display
 void display(Metadata meta);

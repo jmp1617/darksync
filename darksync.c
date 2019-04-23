@@ -177,6 +177,17 @@ uint32_t conv_ip(char* ip){
     return result;
 }
 
+// encryption
+void generate_key_256(){
+    uint8_t key[64];
+    getrandom(key,64,0);
+    char path[50] = {0};
+    snprintf(path, sizeof path, "%s/.darkchat/keys/key_%ld", getenv("HOME"),time(NULL)); 
+    FILE* key_file = fopen(path,"w+");
+    fwrite(key,1,64,key_file);
+}
+
+
 // Display
 void display(Metadata meta){
     WINDOW* w = meta->win;
@@ -639,6 +650,21 @@ void* message_sender_worker(void* arg){
                     strcat(mes,"\n");
                 temp = temp->next;
             }
+            MSG_add(mes,"~",time(NULL),&meta->messages);
+            display(meta);
+            unlock(meta);
+        }
+        else if(message[0]=='/'&&message[1]=='k'&&message[2]=='\0'){
+            generate_key_256();
+            char* mes = "new key generated and placed in keys dir.";
+            lock(meta);
+            MSG_add(mes,"~",time(NULL),&meta->messages);
+            display(meta);
+            unlock(meta);
+        }
+        else if(message[0]=='/'&&message[1]=='h'&&message[2]=='\0'){
+            char* mes = "/q: quit, /h: this message, /l: list online, /k: generate new key";
+            lock(meta);
             MSG_add(mes,"~",time(NULL),&meta->messages);
             display(meta);
             unlock(meta);

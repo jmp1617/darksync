@@ -2,7 +2,6 @@
 #define _AES_H_
 
 #include <stdint.h>
-#include <openssl/rand.h>
 
 #ifndef CBC
   #define CBC 1
