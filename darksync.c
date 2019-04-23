@@ -1,4 +1,4 @@
-#include "darkchat.h"
+#include "darksync.h"
 
 // Ip linked list
 void IPL_add(uint32_t ip, IP_List* root, char* nickname){

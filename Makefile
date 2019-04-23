@@ -8,8 +8,8 @@ ifeq ($(UNAME_S),Darwin)
 	CFLAGS = -Wall -Wextra -pedantic -lpthread
 endif
 
-default: darkchat
+default: darksync
 
-darkchat: darkchat.c darkchat.h aes.c aes.h
-	$(CC) $(CFLAGS) -g -o darkchat darkchat.c darkchat.h aes.c aes.h
+darksync: darksync.c darksync.h aes.c aes.h
+	$(CC) $(CFLAGS) -g -o darksync darksync.c darksync.h aes.c aes.h
 
