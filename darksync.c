@@ -187,6 +187,9 @@ void generate_key_256(){
     fwrite(key,1,64,key_file);
 }
 
+void load_key(char* key, Metadata meta){
+    
+}
 
 // Display
 void display(Metadata meta){
@@ -663,7 +666,7 @@ void* message_sender_worker(void* arg){
             unlock(meta);
         }
         else if(message[0]=='/'&&message[1]=='h'&&message[2]=='\0'){
-            char* mes = "/q: quit, /h: this message, /l: list online, /k: generate new key";
+            char* mes = "/q: quit\n\t     /h: this message\n\t     /l: list online\n\t     /k: generate new key";
             lock(meta);
             MSG_add(mes,"~",time(NULL),&meta->messages);
             display(meta);
