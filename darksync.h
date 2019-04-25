@@ -84,6 +84,7 @@ struct metadata_s{
     unsigned int lock: 2;
     unsigned int ipassive: 1;
     unsigned int emit_black: 1;
+    unsigned int keyloaded: 1;
     uint8_t key[64];
     WINDOW* win;
     WINDOW* message_board;

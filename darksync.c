@@ -183,12 +183,24 @@ void generate_key_256(){
     getrandom(key,64,0);
     char path[50] = {0};
     snprintf(path, sizeof path, "%s/.darkchat/keys/key_%ld", getenv("HOME"),time(NULL)); 
-    FILE* key_file = fopen(path,"w+");
+    FILE* key_file = fopen(path,"w");
     fwrite(key,1,64,key_file);
 }
 
 void load_key(char* key, Metadata meta){
-    
+    if(key[0]!='0'&&key[1]!='\0'){
+        char path[100] = "";
+        strcat(path,getenv("HOME"));
+        strcat(path,"/.darkchat/keys/");
+        strcat(path,key);
+        FILE* keyfile = fopen(path,"r");
+        if(!keyfile){
+            fprintf(stderr,"Key does not exist. Exiting\n");
+            exit(EXIT_FAILURE);
+        }
+        fread(meta->key,1,64,keyfile);
+        meta->keyloaded = 1;
+    }
 }
 
 // Display
@@ -215,8 +227,11 @@ void display(Metadata meta){
     for(int i = 0 ; i < 4 ; i++)
         octet[i] = meta->my_ip >> (i * 8);
     wprintw(st,"%d.%d.%d.%d\n",octet[0],octet[1],octet[2],octet[3]);
-    wprintw(st," Recieve Port: %d\n",RPORT);
-    wprintw(st," Send Port: %d\n",SPORT);
+    wprintw(st," Port(R/S): %d/%d\n",RPORT,SPORT);
+    char* enc_state = "No key loaded";
+    if(meta->keyloaded)
+        enc_state = "AES-256 Active";
+    wprintw(st," Encryption: %s\n",enc_state);
     // borders
     wborder(w,0,0,0,0,0,0,0,0);
     wborder(st,0,0,0,0,ACS_TTEE,0,ACS_BTEE,ACS_RTEE);
@@ -763,6 +778,7 @@ int main(int argc, char* argv[]){
         meta->messages = NULL;
         meta->emit_black = 0;
         meta->blacklist_count = 0;
+        load_key(args->key,meta);
         load_blacklist(&meta->blacklist, meta);
         if(argv[2][0]=='p'){
             meta->ipassive = 1;
