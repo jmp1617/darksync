@@ -179,12 +179,12 @@ uint32_t conv_ip(char* ip){
 
 // encryption
 void generate_key_256(){
-    uint8_t key[64];
-    getrandom(key,64,0);
+    uint8_t key[32];
+    getrandom(key,32,0);
     char path[50] = {0};
     snprintf(path, sizeof path, "%s/.darkchat/keys/key_%ld", getenv("HOME"),time(NULL)); 
     FILE* key_file = fopen(path,"w");
-    fwrite(key,1,64,key_file);
+    fwrite(key,1,32,key_file);
 }
 
 void load_key(char* key, Metadata meta){
@@ -198,7 +198,7 @@ void load_key(char* key, Metadata meta){
             fprintf(stderr,"Key does not exist. Exiting\n");
             exit(EXIT_FAILURE);
         }
-        fread(meta->key,1,64,keyfile);
+        fread(meta->key,1,32,keyfile);
         meta->keyloaded = 1;
     }
 }
@@ -411,13 +411,13 @@ uint32_t get_ip_of_interface(char* interface){
 }
 
 int send_message(Message m, int socket){
-    uint8_t* buffer = calloc(m->size, 1);
+    uint8_t* buffer = calloc(1024, 1);
     buffer[0] = m->identifier;
     if(m->size > 1)
         for(int byte = 1; byte < m->size; byte++){
             buffer[byte] = (m->message)[byte-1];
         }
-    send(socket , buffer , m->size, 0 );
+    send(socket , buffer , 1024, 0 );
     free(buffer);
     return 0;
 }

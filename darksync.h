@@ -85,13 +85,14 @@ struct metadata_s{
     unsigned int ipassive: 1;
     unsigned int emit_black: 1;
     unsigned int keyloaded: 1;
-    uint8_t key[64];
+    uint8_t key[32];
     WINDOW* win;
     WINDOW* message_board;
     WINDOW* messenger;
     WINDOW* banner;
     WINDOW* status;
     WINDOW* message_sender;
+    struct AES_ctx* encrypt_context;
 };
 typedef struct metadata_s* Metadata;
 

@@ -3,32 +3,11 @@
 
 #include <stdint.h>
 
-#ifndef CBC
-  #define CBC 1
-#endif
-
-#ifndef ECB
-  #define ECB 1
-#endif
-
-#ifndef CTR
-  #define CTR 1
-#endif
-
+#define CBC 1
 #define AES256 1
-
 #define AES_BLOCKLEN 16 //Block length in bytes AES is 128b block only
-
-#if defined(AES256) && (AES256 == 1)
-    #define AES_KEYLEN 32
-    #define AES_keyExpSize 240
-#elif defined(AES192) && (AES192 == 1)
-    #define AES_KEYLEN 24
-    #define AES_keyExpSize 208
-#else
-    #define AES_KEYLEN 16   // Key length in bytes
-    #define AES_keyExpSize 176
-#endif
+#define AES_KEYLEN 32
+#define AES_keyExpSize 240
 
 struct AES_ctx
 {
