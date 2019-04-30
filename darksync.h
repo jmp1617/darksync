@@ -23,6 +23,7 @@
 #define SPORT 8687
 #define MAXCONN 50
 #define MAXMSGLEN 256
+#define MAXFILESIZE 8*1000*1000 // 100 MB
 
 //------- Identifiers
 #define ACTIVE_NODES_REQ 0xF0
@@ -31,6 +32,7 @@
 #define NODE_RES 0xF3
 #define HELLO 0xF4
 #define BL_UPD 0xF5
+#define F_MSG 0xF6
 
 //------- Structures
 // User Input
@@ -93,6 +95,7 @@ struct metadata_s{
     WINDOW* status;
     WINDOW* message_sender;
     struct AES_ctx* encrypt_context;
+    uint8_t* file_buffer;
 };
 typedef struct metadata_s* Metadata;
 

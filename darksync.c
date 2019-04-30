@@ -182,7 +182,7 @@ void generate_key_256(){
     uint8_t key[32];
     getrandom(key,32,0);
     char path[50] = {0};
-    snprintf(path, sizeof path, "%s/.darkchat/keys/key_%ld", getenv("HOME"),time(NULL)); 
+    snprintf(path, sizeof path, "%s/.darksync/keys/key_%ld", getenv("HOME"),time(NULL)); 
     FILE* key_file = fopen(path,"w");
     fwrite(key,1,32,key_file);
 }
@@ -191,7 +191,7 @@ void load_key(char* key, Metadata meta){
     if(key[0]!='0'&&key[1]!='\0'){
         char path[100] = "";
         strcat(path,getenv("HOME"));
-        strcat(path,"/.darkchat/keys/");
+        strcat(path,"/.darksync/keys/");
         strcat(path,key);
         FILE* keyfile = fopen(path,"r");
         if(!keyfile){
@@ -270,7 +270,7 @@ void display_mb(MSG_List messages, WINDOW* mb){
 void load_blacklist(IP_List* root, Metadata meta){
     char path[1024] = {0};
     strcat(path, getenv("HOME"));
-    strcat(path,"/.darkchat/blacklist.txt");
+    strcat(path,"/.darksync/blacklist.txt");
     FILE* blacklist = fopen(path, "r");
     if(blacklist){
         size_t n = 0;
@@ -292,7 +292,7 @@ void load_blacklist(IP_List* root, Metadata meta){
 void dump_blacklist(IP_List root){
     char path[1024] = {0};
     strcat(path, getenv("HOME"));
-    strcat(path,"/.darkchat/blacklist.txt");
+    strcat(path,"/.darksync/blacklist.txt");
     FILE* blacklist = fopen(path, "w+");
     IP_List temp = root;
     while(temp){
@@ -307,24 +307,30 @@ void dump_blacklist(IP_List root){
 
 // Voids
 void print_usage(){
-    fprintf(stderr,"Usage: darkchat [key] [node_ip] [nickname] [interface]\n \
-            \tkey: AES key name\n \
+    fprintf(stderr,"Usage: darksync [key] [node_ip] [nickname] [interface]\n \
+            \tkey: AES key name, 0 to start with no key loaded (careful, if you send a message in this mode you may be blacklisted).\n \
             \tnode_ip: ip of active chat node (enter \"p\" to start in passive mode)\n \
             \tnickname: chat nickname\n \
             \tinterface: desired interface, IE: wlp4s0\n\n \
-            \tNote: place key file in $HOME/.darknet/keys dir\n");
+            \tNote: place key file in $HOME/.darksync/keys dir\n");
 }
 
 void create_directories(){
-        struct stat st = {0};
-        char path[1024] = {0};
-        strcat(path, getenv("HOME"));
-        strcat(path,"/.darkchat");
-        if (stat(path, &st) == -1)
-            mkdir(path, 0700);
-        strcat(path,"/keys");
-        if (stat(path,&st) == -1)
-            mkdir(path, 0700);
+    struct stat st = {0};
+    char path[1024] = {0};
+    strcat(path, getenv("HOME"));
+    strcat(path,"/.darksync");
+    if (stat(path, &st) == -1)
+        mkdir(path, 0700);
+    strcat(path,"/keys");
+    if (stat(path,&st) == -1)
+        mkdir(path, 0700);
+    char fp[1024] = {0};
+    strcat(fp, getenv("HOME"));
+    strcat(fp,"/.darksync");
+	strcat(fp,"/files");
+	if (stat(fp,&st) == -1)
+        mkdir(fp, 0700);
 }
 
 void check_args(char* argv[]){
@@ -681,12 +687,30 @@ void* message_sender_worker(void* arg){
             unlock(meta);
         }
         else if(message[0]=='/'&&message[1]=='h'&&message[2]=='\0'){
-            char* mes = "/q: quit\n\t     /h: this message\n\t     /l: list online\n\t     /k: generate new key";
+            char* mes = "/q: quit\n\t     /h: this message\n\t     /l: list online\n\t     /k: generate new key\n\t     /f [filename in .darksync/files]: send a file";
             lock(meta);
             MSG_add(mes,"~",time(NULL),&meta->messages);
             display(meta);
             unlock(meta);
         }
+        else if(message[0]=='/'&&message[1]=='f'&&message[2]==' '){
+	        //get file path
+	        char fp[256] = {0};
+            int pointer = 3;
+            while((pointer-3)<256&&message[pointer]!='\0'){
+                fp[pointer-3] = message[pointer];
+                if(message[pointer]=='\0'){
+                    break; // string name complete
+                }
+                pointer++;
+            }
+            if((pointer-3)==255){
+                fprintf(stderr, "Filename length to long\n");
+            }
+            else{
+                wprintw(meta->message_sender,"%s",fp);
+            }
+	    }
         else{ // normal message
             lock(meta);
             uint32_t t = (uint32_t)time(NULL);
