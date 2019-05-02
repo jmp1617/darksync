@@ -95,7 +95,6 @@ struct metadata_s{
     WINDOW* status;
     WINDOW* message_sender;
     struct AES_ctx* encrypt_context;
-    uint8_t* file_buffer;
 };
 typedef struct metadata_s* Metadata;
 

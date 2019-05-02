@@ -578,6 +578,24 @@ void* message_reciever_worker(void* arg){
                 unlock(meta);
                 close(new_socket);
             }
+            else if(message[0]==F_MSG){
+                lock(meta);
+                char* msg = calloc(100,1);
+                char* nick = IPL_contains(address.sin_addr.s_addr,meta->ip_list);
+                strcat(msg,"new file recieved: ");
+                strcat(msg,(char*)(message+1));
+                strcat(msg,". placed in files directory.\0");
+                char path[1024] = {0};
+                strcat(path, getenv("HOME"));
+                strcat(path,"/.darksync/");
+                strcat(path,(char*)(message+1));
+                FILE* fp = fopen(path,"w");
+                fwrite(message+261, 1, (int)*(message+257), fp);
+                MSG_add(msg, nick, time(NULL), &(meta->messages));
+                free(msg);
+                display(meta);
+                unlock(meta);
+            }
             else{ // otherwise drop
                 lock(meta);
                 char* bad = calloc(100,1);
@@ -705,10 +723,54 @@ void* message_sender_worker(void* arg){
                 pointer++;
             }
             if((pointer-3)==255){
-                fprintf(stderr, "Filename length to long\n");
+                wprintw(meta->message_sender, "Filename length to long\n");
             }
             else{
-                wprintw(meta->message_sender,"%s",fp);
+                char path[1024] = {0};
+                strcat(path, getenv("HOME"));
+                strcat(path,"/.darksync/");
+                strcat(path,fp);
+                FILE* fts = fopen(path,"r");
+                if(!fts){
+                    wprintw(meta->message_sender,"File not found.\n");
+                }
+                else{
+                    fseek(fts, 0L, SEEK_END);
+                    int sz = ftell(fts);
+                    rewind(fts);
+                    if(sz > MAXFILESIZE){
+                        wprintw(meta->message_sender,"File to large, must be less than %d bytes.\n",MAXFILESIZE);
+                    }
+                    else{
+                        Message mes = calloc(1,sizeof(struct message_s));
+                        mes->identifier = F_MSG;
+                        mes->size = 1 + sz;
+                        mes->message = calloc(1,sz+256+4);
+                        memcpy(mes->message,fp,256);
+                        *(mes->message+256) = sz;
+                        fread(mes->message, 1, sz+256, fts);
+                
+                        lock(meta);
+                        char* temp_nick = calloc(20,1);
+                        memcpy(temp_nick, meta->nick, 20);
+                        MSG_add(message, temp_nick, time(NULL), &(meta->messages));
+                        free(temp_nick);
+                        IP_List temp_ip = meta->ip_list->next;
+                        for(int ip = 1; ip < meta->ip_count; ip++){
+                            struct sockaddr_in node;
+                            node.sin_family = AF_INET;
+                            node.sin_port = htons(RPORT);
+                            node.sin_addr.s_addr = temp_ip->ip;
+                            while(connect(meta->sender_s, (struct sockaddr *)&node,sizeof(node)) < 0);
+                            send_message(mes, meta->sender_s);
+                            close(meta->sender_s);
+                            meta->sender_s = init_socket(SPORT);
+                            temp_ip=temp_ip->next;
+                        }
+                        free(mes);
+                        unlock(meta);
+                    }
+                }
             }
 	    }
         else{ // normal message
