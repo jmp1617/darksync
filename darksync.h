@@ -108,6 +108,7 @@ typedef struct message_s* Message;
 //------- encryption
 void generate_key_256();
 void load_key(char* key, Metadata meta);
+int send_message_encrypted(Message m, int socket, struct AES_ctx* context);
 
 //------- display
 void display(Metadata meta);

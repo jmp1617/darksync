@@ -203,6 +203,24 @@ void load_key(char* key, Metadata meta){
     }
 }
 
+int send_message_encrypted(Message m, int socket, struct AES_ctx* context){
+    int buffer_size = m->size;
+    if(buffer_size<16)
+        buffer_size = 16;
+    else if(buffer_size%16)//apply padding
+        buffer_size = (buffer_size/16)*16+(buffer_size%16)*16;
+    uint8_t* buffer = calloc(buffer_size, 1);
+    buffer[0] = m->identifier;
+    if(m->size > 1)
+        for(int byte = 1; byte < m->size; byte++){
+            buffer[byte] = (m->message)[byte-1];
+        }
+    AES_CBC_encrypt_buffer(context,buffer,buffer_size);
+    send(socket , buffer , buffer_size, 0 );
+    free(buffer);
+    return 0;
+}
+
 // Display
 void display(Metadata meta){
     WINDOW* w = meta->win;
@@ -454,8 +472,10 @@ void* message_reciever_worker(void* arg){
             free(nick);
         }
         else{
-            uint8_t* message = calloc(1024,1);
-            read(new_socket , message, 1024); 
+            int buf_len = (MAXFILESIZE/16)*16+(MAXFILESIZE%16)*16;
+            uint8_t* message = calloc(buf_len,1);
+            read(new_socket , message, buf_len);
+            AES_CBC_decrypt_buffer(meta->encrypt_context,message,buf_len);
             if(message[0]==ACTIVE_NODES_REQ){ // node list request
                 lock(meta);
                 //extract nickname
@@ -884,6 +904,9 @@ int main(int argc, char* argv[]){
         meta->reciever_s = init_socket(RPORT);
         meta->sender_s = init_socket(SPORT);
 
+        //AES init
+        AES_init_ctx(meta->encrypt_context,meta->key);
+        
         // Screen
         initscr();
         int h, w;
