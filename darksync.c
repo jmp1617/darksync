@@ -531,7 +531,7 @@ void* message_reciever_worker(void* arg){
                 meta->ip_count++;
                 //
                 unlock(meta);
-                send_message(ip_list_message, new_socket);
+                send_message_encrypted(ip_list_message, new_socket, meta->encrypt_context);
                 free(ip_list_message->message);
                 free(ip_list_message);
                 close(new_socket);
@@ -663,7 +663,7 @@ void* message_sender_worker(void* arg){
                 node.sin_port = htons(RPORT);
                 node.sin_addr.s_addr = temp_ip->ip;
                 while(connect(meta->sender_s, (struct sockaddr *)&node, sizeof(node)) < 0);
-                send_message(bl_message, meta->sender_s);
+                send_message_encrypted(bl_message, meta->sender_s, meta->encrypt_context);
                 close(meta->sender_s);
                 meta->sender_s = init_socket(SPORT);
                 temp_ip=temp_ip->next;
@@ -688,7 +688,7 @@ void* message_sender_worker(void* arg){
                     node.sin_port = htons(RPORT);
                     node.sin_addr.s_addr = temp_ip->ip;
                     while(connect(meta->sender_s, (struct sockaddr *)&node,sizeof(node)) < 0);
-                    send_message(disconnect, meta->sender_s);
+                    send_message_encrypted(disconnect, meta->sender_s, meta->encrypt_context);
                     close(meta->sender_s);
                     meta->sender_s = init_socket(SPORT);
                     temp_ip=temp_ip->next;
@@ -782,7 +782,7 @@ void* message_sender_worker(void* arg){
                             node.sin_port = htons(RPORT);
                             node.sin_addr.s_addr = temp_ip->ip;
                             while(connect(meta->sender_s, (struct sockaddr *)&node,sizeof(node)) < 0);
-                            send_message(mes, meta->sender_s);
+                            send_message_encrypted(mes, meta->sender_s, meta->encrypt_context);
                             close(meta->sender_s);
                             meta->sender_s = init_socket(SPORT);
                             temp_ip=temp_ip->next;
@@ -815,7 +815,7 @@ void* message_sender_worker(void* arg){
                     node.sin_port = htons(RPORT);
                     node.sin_addr.s_addr = temp_ip->ip;
                     while(connect(meta->sender_s, (struct sockaddr *)&node,sizeof(node)) < 0);
-                    send_message(mes, meta->sender_s);
+                    send_message_encrypted(mes, meta->sender_s, meta->encrypt_context);
                     close(meta->sender_s);
                     meta->sender_s = init_socket(SPORT);
                     temp_ip=temp_ip->next;
@@ -941,7 +941,7 @@ int main(int argc, char* argv[]){
                 exit(EXIT_FAILURE);
             }
             while(connect(meta->sender_s, (struct sockaddr *)&node, sizeof(node)) < 0);
-            send_message(request, meta->sender_s);
+            send_message_encrypted(request, meta->sender_s, meta->encrypt_context);
             free(request->message);
             free(request);
             uint8_t buffer[(MAXCONN*4)+2+20]={0};
@@ -998,7 +998,7 @@ int main(int argc, char* argv[]){
                 node.sin_port = htons(RPORT);
                 node.sin_addr.s_addr = temp->ip;
                 while(connect(meta->sender_s, (struct sockaddr *)&node, sizeof(node)) < 0);
-                send_message(request, meta->sender_s);
+                send_message_encrypted(request, meta->sender_s, meta->encrypt_context);
                 close(meta->sender_s);
                 meta->sender_s = init_socket(SPORT);
                 temp=temp->next;
