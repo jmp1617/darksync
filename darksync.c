@@ -887,8 +887,6 @@ int main(int argc, char* argv[]){
         meta->blacklist_count = 0;
         meta->encrypt_context = calloc(1,sizeof(struct AES_ctx));
         load_key(args->key,meta);
-        printf("%x%x%x%x",meta->key[0],meta->key[1],meta->key[2],meta->key[3]);
-        exit(EXIT_FAILURE);
         load_blacklist(&meta->blacklist, meta);
         if(argv[2][0]=='p'){
             meta->ipassive = 1;
