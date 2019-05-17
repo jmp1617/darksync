@@ -905,12 +905,8 @@ int main(int argc, char* argv[]){
         meta->sender_s = init_socket(SPORT);
 
         //AES init
-
-        if((args->key)[0]=='0'&&(args->key)[1]=='\0')
-            meta->encrypt_context = NULL;
-        else
-            AES_init_ctx(meta->encrypt_context,meta->key);
-
+        if(meta->keyloaded)
+          AES_init_ctx(meta->encrypt_context,meta->key);
 
         // Screen
         initscr();
