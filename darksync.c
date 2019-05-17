@@ -162,7 +162,7 @@ uint32_t conv_ip(char* ip){
         }
     }
     // convert to uint32_t while checking fields
-    for(int byte=3;byte>=0;byte--){ 
+    for(int byte=3;byte>=0;byte--){
         char b[4]={0};
         strncpy(b,oct+(byte*4),4);
         int x = strtol(b,NULL,10);
@@ -182,7 +182,7 @@ void generate_key_256(){
     uint8_t key[32];
     getrandom(key,32,0);
     char path[50] = {0};
-    snprintf(path, sizeof path, "%s/.darksync/keys/key_%ld", getenv("HOME"),time(NULL)); 
+    snprintf(path, sizeof path, "%s/.darksync/keys/key_%ld", getenv("HOME"),time(NULL));
     FILE* key_file = fopen(path,"w");
     fwrite(key,1,32,key_file);
 }
@@ -364,7 +364,7 @@ void check_args(char* argv[]){
             exit(EXIT_FAILURE);
         }
     }
-    // check ip 
+    // check ip
     if(!(argv[2][0]=='p'&&strlen(argv[2])==1)){
         if(strlen(argv[2])>15){
             fprintf(stderr,"Invalid IP.\n");
@@ -404,17 +404,17 @@ int init_socket(int port){
     struct sockaddr_in address;
     int sockfd;
     int opt = 1;
-    if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == 0){ 
-        fprintf(stderr,"socket failed"); 
-        exit(EXIT_FAILURE); 
+    if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == 0){
+        fprintf(stderr,"socket failed");
+        exit(EXIT_FAILURE);
     }
     // force port 8686
-    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))){ 
-        fprintf(stderr,"setsockopt"); 
-        exit(EXIT_FAILURE); 
+    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))){
+        fprintf(stderr,"setsockopt");
+        exit(EXIT_FAILURE);
     }
-    address.sin_family = AF_INET; 
-    address.sin_addr.s_addr = INADDR_ANY; 
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = INADDR_ANY;
     address.sin_port = htons( port );
     if (bind(sockfd, (struct sockaddr *)&address, sizeof(address))<0){
         fprintf(stderr,"bind failed");
@@ -428,10 +428,10 @@ uint32_t get_ip_of_interface(char* interface){
  	struct ifreq ifr;
  	fd = socket(AF_INET, SOCK_DGRAM, 0);
  	ifr.ifr_addr.sa_family = AF_INET;
- 	strncpy(ifr.ifr_name, interface, IFNAMSIZ-1); 
+ 	strncpy(ifr.ifr_name, interface, IFNAMSIZ-1);
  	ioctl(fd, SIOCGIFADDR, &ifr);
  	close(fd);
-    return (((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr).s_addr; 
+    return (((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr).s_addr;
 }
 
 int send_message(Message m, int socket){
@@ -450,9 +450,9 @@ int send_message(Message m, int socket){
 void* message_reciever_worker(void* arg){
     Metadata meta = (Metadata)arg;
     while(meta->lock!=2){
-        if (listen(meta->reciever_s, MAXCONN) < 0){ 
-            fprintf(stderr, "failed on listen\n"); 
-            exit(EXIT_FAILURE); 
+        if (listen(meta->reciever_s, MAXCONN) < 0){
+            fprintf(stderr, "failed on listen\n");
+            exit(EXIT_FAILURE);
         }
         struct sockaddr_in address;
         int addrlen = sizeof(address);
@@ -466,7 +466,7 @@ void* message_reciever_worker(void* arg){
                 break;
             }
         }
-        char* nick = IPL_contains(address.sin_addr.s_addr,meta->blacklist); 
+        char* nick = IPL_contains(address.sin_addr.s_addr,meta->blacklist);
         if(nick){ // blacklist check
             close(new_socket); // ciao ciao
             free(nick);
@@ -536,7 +536,7 @@ void* message_reciever_worker(void* arg){
                 free(ip_list_message);
                 close(new_socket);
             }
-            else if(message[0]==DISCONNECT){ // disconnect 
+            else if(message[0]==DISCONNECT){ // disconnect
                 char* conn = calloc(100,1);
                 char* temp_nick = IPL_contains(address.sin_addr.s_addr,meta->ip_list);
                 strcat(conn,inet_ntoa(address.sin_addr));
@@ -551,14 +551,14 @@ void* message_reciever_worker(void* arg){
                 display(meta);
                 close(new_socket);
             }
-            else if(message[0]==STD_MSG){ // normal message 
+            else if(message[0]==STD_MSG){ // normal message
                 uint32_t t = 0;
                 for(int b = 3; b>=0; b--){
                     t |= message[1+MAXMSGLEN+b];
                     if(b!=0)
                         t<<=8;
                 }
-                char* nick = IPL_contains(address.sin_addr.s_addr,meta->ip_list); 
+                char* nick = IPL_contains(address.sin_addr.s_addr,meta->ip_list);
                 MSG_add((char*)(message+1),nick,t,&(meta->messages));
                 free(nick);
                 display(meta);
@@ -570,7 +570,7 @@ void* message_reciever_worker(void* arg){
                     temp_nick[c-1] = message[c];
                 }
                 lock(meta);
-                char* nick = IPL_contains(address.sin_addr.s_addr,meta->ip_list); 
+                char* nick = IPL_contains(address.sin_addr.s_addr,meta->ip_list);
                 if(!nick){
                     IPL_add(address.sin_addr.s_addr,&(meta->ip_list),temp_nick);
                     meta->ip_count++;
@@ -629,7 +629,7 @@ void* message_reciever_worker(void* arg){
                 meta->blacklist_count++;
                 meta->emit_black = 1;
                 unlock(meta);
-                close(new_socket);    
+                close(new_socket);
             }
             free(message);
         }
@@ -769,7 +769,7 @@ void* message_sender_worker(void* arg){
                         memcpy(mes->message,fp,256);
                         *(mes->message+256) = sz;
                         fread(mes->message, 1, sz+256, fts);
-                
+
                         lock(meta);
                         char* temp_nick = calloc(20,1);
                         memcpy(temp_nick, meta->nick, 20);
@@ -840,7 +840,7 @@ void unlock(Metadata meta){
     meta->lock = 0;
 }
 
-// Destruction 
+// Destruction
 void destructor(Arguments args, Metadata meta){
     if(args){
         free(args->key);
@@ -864,7 +864,7 @@ int main(int argc, char* argv[]){
     else{
         // Check arguments
         check_args(argv);
-        
+
         // Load arguments
         Arguments args = calloc(1, sizeof(struct arguments_s));
         args->key = calloc(1,strlen(argv[1])+1);
@@ -872,10 +872,10 @@ int main(int argc, char* argv[]){
         args->nickname = calloc(20,1);
         strncpy(args->key, argv[1], strlen(argv[1])+1);
         strncpy(args->nickname, argv[3], strlen(argv[3])+1);
-        
+
         // Create Dirs
         create_directories();
-        
+
         // Initialize Metadata
         Metadata meta = calloc(1,sizeof(struct metadata_s));
         memcpy(meta->nick,args->nickname,20);
@@ -905,8 +905,13 @@ int main(int argc, char* argv[]){
         meta->sender_s = init_socket(SPORT);
 
         //AES init
-        AES_init_ctx(meta->encrypt_context,meta->key);
-        
+
+        if((args->key)[0]=='0'&&(args->key)[1]=='\0')
+            meta->encrypt_context = NULL;
+        else
+            AES_init_ctx(meta->encrypt_context,meta->key);
+
+
         // Screen
         initscr();
         int h, w;
@@ -924,7 +929,7 @@ int main(int argc, char* argv[]){
 
         display(meta);
 
-        // ask for the itial nodes ip list 
+        // ask for the itial nodes ip list
         if(!meta->ipassive){
             // create the message;
             Message request = calloc(1,sizeof(struct message_s));
@@ -1017,7 +1022,7 @@ int main(int argc, char* argv[]){
         pthread_create(&thread_id_sender, NULL, message_sender_worker, meta);
         pthread_join(thread_id_reciever, &thread_ret);
         pthread_join(thread_id_sender, &thread_ret);
-        
+
         // Save the blacklist
         if(meta->blacklist)
             dump_blacklist(meta->blacklist);
