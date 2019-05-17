@@ -5,8 +5,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <sys/socket.h> 
-#include <netinet/in.h> 
+#include <sys/socket.h>
+#include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <ifaddrs.h>
@@ -72,7 +72,7 @@ void MSG_display(MSG_List messages);
 void print_time(uint32_t* time);
 void wprint_time(WINDOW* w, uint32_t* time);
 
-// Metadata 
+// Metadata
 struct metadata_s{
     int ip_count;
     int blacklist_count;

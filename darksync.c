@@ -196,6 +196,7 @@ void load_key(char* key, Metadata meta){
         FILE* keyfile = fopen(path,"r");
         if(!keyfile){
             fprintf(stderr,"Key does not exist. Exiting\n");
+            meta->keyloaded = 0;
             exit(EXIT_FAILURE);
         }
         fread(meta->key,1,32,keyfile);
@@ -884,7 +885,10 @@ int main(int argc, char* argv[]){
         meta->messages = NULL;
         meta->emit_black = 0;
         meta->blacklist_count = 0;
+        meta->encrypt_context = calloc(1,sizeof(struct AES_ctx));
         load_key(args->key,meta);
+        printf("%x%x%x%x",meta->key[0],meta->key[1],meta->key[2],meta->key[3]);
+        exit(EXIT_FAILURE);
         load_blacklist(&meta->blacklist, meta);
         if(argv[2][0]=='p'){
             meta->ipassive = 1;
