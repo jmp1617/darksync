@@ -959,6 +959,15 @@ int main(int argc, char* argv[]){
             for( int c = 1; c <= 20; c++ ){
                 temp_nick[c-1] = buffer[c];
             }
+            //connection message
+            char* conn = calloc(100,1);
+            strcat(conn,inet_ntoa(node.sin_addr));
+            strcat(conn," (");
+            strcat(conn,temp_nick);
+            strcat(conn,") connected.\0");
+            MSG_add(conn,"~",time(NULL),&(meta->messages));
+            free(conn);
+            display(meta);
             //add to ip list
             int ipad = 2+20;
             for(ipad = ipad; ipad < (size*4)+2+20; ipad+=4){ // for each ip address
