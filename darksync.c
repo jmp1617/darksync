@@ -957,7 +957,7 @@ int main(int argc, char* argv[]){
             //extract nickname
             char temp_nick[20] = {0};
             for( int c = 1; c <= 20; c++ ){
-                temp_nick[c-1] = buffer[c];
+                temp_nick[c-1] = buffer[c-1];
             }
             //connection message
             char* conn = calloc(100,1);
