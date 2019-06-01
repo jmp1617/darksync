@@ -5,7 +5,7 @@
 
 #define CBC 1
 #define AES256 1
-#define AES_BLOCKLEN 16 //Block length in bytes AES is 128b block only
+#define AES_BLOCKLEN 16
 #define AES_KEYLEN 32
 #define AES_keyExpSize 240
 
@@ -17,7 +17,6 @@ struct AES_ctx
 #endif
 };
 
-void AES_init_ctx(struct AES_ctx* ctx, const uint8_t* key);
 #if (defined(CBC) && (CBC == 1)) || (defined(CTR) && (CTR == 1))
 void AES_init_ctx_iv(struct AES_ctx* ctx, const uint8_t* key, const uint8_t* iv);
 void AES_ctx_set_iv(struct AES_ctx* ctx, const uint8_t* iv);

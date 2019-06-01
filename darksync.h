@@ -88,6 +88,7 @@ struct metadata_s{
     unsigned int emit_black: 1;
     unsigned int keyloaded: 1;
     uint8_t key[32];
+    uint8_t iv[16];
     WINDOW* win;
     WINDOW* message_board;
     WINDOW* messenger;
@@ -108,7 +109,7 @@ typedef struct message_s* Message;
 //------- encryption
 void generate_key_256();
 void load_key(char* key, Metadata meta);
-int send_message_encrypted(Message m, int socket, struct AES_ctx* context);
+int send_message_encrypted(Message m, int socket, Metadata meta);
 
 //------- display
 void display(Metadata meta);

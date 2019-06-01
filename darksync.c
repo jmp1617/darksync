@@ -204,7 +204,7 @@ void load_key(char* key, Metadata meta){
     }
 }
 
-int send_message_encrypted(Message m, int socket, struct AES_ctx* context){
+int send_message_encrypted(Message m, int socket, Metadata meta){
     int buffer_size = m->size;
     if(buffer_size<16)
         buffer_size = 16;
@@ -216,7 +216,8 @@ int send_message_encrypted(Message m, int socket, struct AES_ctx* context){
         for(int byte = 1; byte < m->size; byte++){
             buffer[byte] = (m->message)[byte-1];
         }
-    //AES_CBC_encrypt_buffer(context,buffer,buffer_size);
+    AES_init_ctx_iv(meta->encrypt_context, meta->key, meta->iv);
+    AES_CBC_encrypt_buffer(meta->encrypt_context,buffer,buffer_size);
     send(socket , buffer , buffer_size, 0 );
     free(buffer);
     return 0;
@@ -476,7 +477,8 @@ void* message_reciever_worker(void* arg){
             int buf_len = (MAXFILESIZE/16)*16+(MAXFILESIZE%16)*16;
             uint8_t* message = calloc(buf_len,1);
             read(new_socket , message, buf_len);
-            //AES_CBC_decrypt_buffer(meta->encrypt_context,message,buf_len);
+            AES_init_ctx_iv(meta->encrypt_context, meta->key, meta->iv);
+            AES_CBC_decrypt_buffer(meta->encrypt_context,message,buf_len);
             if(message[0]==ACTIVE_NODES_REQ){ // node list request
                 lock(meta);
                 //extract nickname
@@ -532,7 +534,7 @@ void* message_reciever_worker(void* arg){
                 meta->ip_count++;
                 //
                 unlock(meta);
-                send_message_encrypted(ip_list_message, new_socket, meta->encrypt_context);
+                send_message_encrypted(ip_list_message, new_socket, meta);
                 free(ip_list_message->message);
                 free(ip_list_message);
                 close(new_socket);
@@ -664,7 +666,7 @@ void* message_sender_worker(void* arg){
                 node.sin_port = htons(RPORT);
                 node.sin_addr.s_addr = temp_ip->ip;
                 while(connect(meta->sender_s, (struct sockaddr *)&node, sizeof(node)) < 0);
-                send_message_encrypted(bl_message, meta->sender_s, meta->encrypt_context);
+                send_message_encrypted(bl_message, meta->sender_s, meta);
                 close(meta->sender_s);
                 meta->sender_s = init_socket(SPORT);
                 temp_ip=temp_ip->next;
@@ -689,7 +691,7 @@ void* message_sender_worker(void* arg){
                     node.sin_port = htons(RPORT);
                     node.sin_addr.s_addr = temp_ip->ip;
                     while(connect(meta->sender_s, (struct sockaddr *)&node,sizeof(node)) < 0);
-                    send_message_encrypted(disconnect, meta->sender_s, meta->encrypt_context);
+                    send_message_encrypted(disconnect, meta->sender_s, meta);
                     close(meta->sender_s);
                     meta->sender_s = init_socket(SPORT);
                     temp_ip=temp_ip->next;
@@ -783,7 +785,7 @@ void* message_sender_worker(void* arg){
                             node.sin_port = htons(RPORT);
                             node.sin_addr.s_addr = temp_ip->ip;
                             while(connect(meta->sender_s, (struct sockaddr *)&node,sizeof(node)) < 0);
-                            send_message_encrypted(mes, meta->sender_s, meta->encrypt_context);
+                            send_message_encrypted(mes, meta->sender_s, meta);
                             close(meta->sender_s);
                             meta->sender_s = init_socket(SPORT);
                             temp_ip=temp_ip->next;
@@ -816,7 +818,7 @@ void* message_sender_worker(void* arg){
                     node.sin_port = htons(RPORT);
                     node.sin_addr.s_addr = temp_ip->ip;
                     while(connect(meta->sender_s, (struct sockaddr *)&node,sizeof(node)) < 0);
-                    send_message_encrypted(mes, meta->sender_s, meta->encrypt_context);
+                    send_message_encrypted(mes, meta->sender_s, meta);
                     close(meta->sender_s);
                     meta->sender_s = init_socket(SPORT);
                     temp_ip=temp_ip->next;
@@ -855,6 +857,8 @@ void destructor(Arguments args, Metadata meta){
         IPL_destroy(meta->blacklist);
         close(meta->reciever_s);
         close(meta->sender_s);
+        free(meta->key);
+        free(meta->iv);
         free(meta);
     }
 }
@@ -906,9 +910,8 @@ int main(int argc, char* argv[]){
         meta->reciever_s = init_socket(RPORT);
         meta->sender_s = init_socket(SPORT);
 
-        //AES init
-        if(meta->keyloaded)
-          AES_init_ctx(meta->encrypt_context,meta->key);
+        //for now derive from key
+        memcpy(meta->iv,meta->key,16);
 
         // Screen
         initscr();
@@ -944,7 +947,7 @@ int main(int argc, char* argv[]){
                 exit(EXIT_FAILURE);
             }
             while(connect(meta->sender_s, (struct sockaddr *)&node, sizeof(node)) < 0);
-            send_message_encrypted(request, meta->sender_s, meta->encrypt_context);
+            send_message_encrypted(request, meta->sender_s, meta);
             free(request->message);
             free(request);
             int buf_len = (((MAXCONN*4)+2+20)/16)*16+(((MAXCONN*4)+2+20)%16)*16;
@@ -952,7 +955,8 @@ int main(int argc, char* argv[]){
             for(int i = 0; i < buf_len; i++)
                 buffer[i] = 0;
             read(meta->sender_s, buffer, buf_len);
-            //AES_CBC_decrypt_buffer(meta->encrypt_context,buffer,buf_len);
+            AES_init_ctx_iv(meta->encrypt_context, meta->key, meta->iv);
+            AES_CBC_decrypt_buffer(meta->encrypt_context,buffer,buf_len);
             uint8_t size = buffer[1];
             //extract nickname
             char temp_nick[20] = {0};
@@ -1014,7 +1018,7 @@ int main(int argc, char* argv[]){
                 node.sin_port = htons(RPORT);
                 node.sin_addr.s_addr = temp->ip;
                 while(connect(meta->sender_s, (struct sockaddr *)&node, sizeof(node)) < 0);
-                send_message_encrypted(request, meta->sender_s, meta->encrypt_context);
+                send_message_encrypted(request, meta->sender_s, meta);
                 close(meta->sender_s);
                 meta->sender_s = init_socket(SPORT);
                 temp=temp->next;
